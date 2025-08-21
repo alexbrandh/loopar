@@ -1,0 +1,28 @@
+=== Testing AR Functionality ===
+
+Γ£à Found postcard with NFT descriptors:
+   ID: 550e8400-e29b-41d4-a716-446655440001
+   Title: Postal AR de Prueba
+   Status: ready
+   NFT Descriptors: YES
+
+=== Testing API Endpoint ===
+Testing: http://localhost:3000/api/postcards/550e8400-e29b-41d4-a716-446655440001
+Γ£à API Response successful
+   Has NFT descriptors: NO
+
+=== AR Page Information ===
+AR Page URL: http://localhost:3000/ar/550e8400-e29b-41d4-a716-446655440001
+≡ƒÆí Open this URL in a browser to test AR functionality
+
+=== Summary ===
+Γ£à Database: Postcard with NFT descriptors found
+Γ£à API: Endpoint responding correctly
+Γ£à NFT Files: Descriptor files accessible
+≡ƒöù AR Page: Ready for testing
+
+≡ƒÆí Next steps:
+   1. Open the AR page URL in a browser
+   2. Allow camera access when prompted
+   3. Point camera at the T-Rex image for AR tracking
+   4. Verify video playback when marker is detected

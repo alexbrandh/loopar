@@ -1,0 +1,11 @@
+HTTP/1.1 500 Internal Server Error
+Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate
+Vary: RSC, Next-Router-State-Tree, Next-Router-Prefetch, Accept-Encoding
+X-Powered-By: Next.js
+ETag: "66fci67lppl"
+Content-Type: text/html; charset=utf-8
+Content-Length: 21
+Date: Wed, 20 Aug 2025 03:47:39 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+

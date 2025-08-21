@@ -1,0 +1,71 @@
+== CONTEXT ==
+PWD: C:\Users\copap\Desktop\loopar 2
+Node: v22.18.0  NPM: 10.9.3
+Git branch: 
+== REMOVE APP ROUTES THAT SHADOW PUBLIC ==
+== START NEXT DEV :3005 ==
+Dev3005 PID: 
+Server 3005 ready: False
+== ENDPOINT CHECKS (3005) ==
+[HEAD] http://localhost:3005/manifest.json -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/manifest.json -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[HEAD] http://localhost:3005/favicon.svg -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/favicon.svg -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[HEAD] http://localhost:3005/icon-192.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/icon-192.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[HEAD] http://localhost:3005/icons/icon-512.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/icons/icon-512.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[HEAD] http://localhost:3005/icon-512.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/icon-512.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+== CONTEXT ==
+PWD: C:\Users\copap\Desktop\loopar 2
+Node: v22.18.0  NPM: 10.9.3
+== KILL workspace node/next on :3005 and :3000 ==
+== REMOVE App routes (PS) ==
+Removed (PS): src/app/icons
+Removed (PS): src/app/icon-512.png
+== REMOVE App routes (cmd fallback) ==
+== CLEAN .next ==
+No .next present
+== VERIFY removal ==
+api
+ar
+dashboard
+help
+share
+sign-in
+sign-up
+globals.css
+layout.tsx
+page.tsx
+== START next dev :3005 ==
+Dev3005 PID: 
+Server 3005 ready: False
+== ENDPOINT CHECKS (3005) ==
+[HEAD] http://localhost:3005/manifest.json -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/manifest.json -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[HEAD] http://localhost:3005/favicon.svg -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/favicon.svg -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[HEAD] http://localhost:3005/icon-192.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/icon-192.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[HEAD] http://localhost:3005/icons/icon-512.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/icons/icon-512.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[HEAD] http://localhost:3005/icon-512.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/icon-512.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+== VERIFY REMOVALS ==
+OK removed: src/app/icons
+OK removed: src/app/icon-512.png
+== START next dev :3005 ==
+Dev3005 PID: 
+Server 3005 ready: False
+== ENDPOINT CHECKS (3005) ==
+[HEAD] http://localhost:3005/manifest.json -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/manifest.json -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[HEAD] http://localhost:3005/favicon.svg -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/favicon.svg -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[HEAD] http://localhost:3005/icon-192.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/icon-192.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[HEAD] http://localhost:3005/icons/icon-512.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/icons/icon-512.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[HEAD] http://localhost:3005/icon-512.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)
+[GET]  http://localhost:3005/icon-512.png -> ERROR No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión. (localhost:3005)

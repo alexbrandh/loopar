@@ -1,0 +1,17 @@
+Base URL: http://localhost:3001
+
+== http://localhost:3001/icon-512.png ==
+[HEAD] ERROR fetch failed
+[GET ] ERROR fetch failed
+
+== http://localhost:3001/icons/icon-512.png ==
+[HEAD] ERROR fetch failed
+[GET ] ERROR fetch failed
+
+== http://localhost:3001/icons/test512.png ==
+[HEAD] ERROR fetch failed
+[GET ] ERROR fetch failed
+
+== http://localhost:3001/icons/nonexistent/icon-512.png ==
+[HEAD] ERROR fetch failed
+[GET ] ERROR fetch failed

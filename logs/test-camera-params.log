@@ -1,0 +1,7 @@
+Testing: http://localhost:3000/api/ar/camera-params
+[HEAD] status: 200
+[HEAD] content-type: null
+[HEAD] cache-control: no-cache, no-store, must-revalidate, no-store
+[GET] status: 200
+[GET] content-type: application/octet-stream
+[GET] bytes: 176

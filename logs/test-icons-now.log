@@ -1,0 +1,10 @@
+== CONTEXT ==
+PWD: C:\Users\copap\Desktop\loopar 2
+Node: v22.18.0  NPM: 10.9.3
+Server 3000 ready: True
+[HEAD] http://localhost:3000/icons/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[GET]  http://localhost:3000/icons/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[HEAD] http://localhost:3000/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[GET]  http://localhost:3000/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[HEAD] http://localhost:3000/icons/test512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[GET]  http://localhost:3000/icons/test512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).

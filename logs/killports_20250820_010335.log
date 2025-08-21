@@ -1,0 +1,4 @@
+== Killing ports 3000/3001/3002 ==
+No process on port 3000 or insufficient permissions: No MSFT_NetTCPConnection objects found with property 'LocalPort' equal to '3000'.  Verify the value of the property and retry.
+Killing PID 20912 on port 3001
+No process on port 3002 or insufficient permissions: No MSFT_NetTCPConnection objects found with property 'LocalPort' equal to '3002'.  Verify the value of the property and retry.

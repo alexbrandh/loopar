@@ -1,0 +1,38 @@
+== CONTEXT ==
+PWD: C:\Users\copap\Desktop\loopar 2
+Node: v22.18.0  NPM: 10.9.3
+== KILL workspace Next dev on :3000 ==
+== CLEAN .next ==
+Removed .next
+== START next dev :3000 ==
+Dev3000 PID: 
+Server 3000 ready: True
+== ENDPOINT CHECKS (with middleware rewrite) ==
+[HEAD] http://localhost:3000/icons/test512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[GET]  http://localhost:3000/icons/test512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[HEAD] http://localhost:3000/icons/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[GET]  http://localhost:3000/icons/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[HEAD] http://localhost:3000/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[GET]  http://localhost:3000/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+== CONTEXT ==
+PWD: C:\Users\copap\Desktop\loopar 2
+Node: v22.18.0  NPM: 10.9.3
+== KILL workspace Next dev on :3000 ==
+== CLEAN .next ==
+No .next present
+== START next dev :3000 ==
+Dev3000 PID: 
+Server 3000 ready: True
+== ENDPOINT CHECKS (with middleware matcher) ==
+[HEAD] http://localhost:3000/manifest.json -> 200 CT=System.String[] CL=System.String[]
+[GET]  http://localhost:3000/manifest.json -> 200 CT=System.String[] LEN=System.String[]
+[HEAD] http://localhost:3000/favicon.svg -> 200 CT=System.String[] CL=System.String[]
+[GET]  http://localhost:3000/favicon.svg -> 200 CT=System.String[] LEN=System.String[]
+[HEAD] http://localhost:3000/icon-192.png -> 200 CT=System.String[] CL=System.String[]
+[GET]  http://localhost:3000/icon-192.png -> 200 CT=System.String[] LEN=System.String[]
+[HEAD] http://localhost:3000/icons/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[GET]  http://localhost:3000/icons/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[HEAD] http://localhost:3000/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[GET]  http://localhost:3000/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[HEAD] http://localhost:3000/icons/test512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
+[GET]  http://localhost:3000/icons/test512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).

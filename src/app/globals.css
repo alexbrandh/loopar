@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Ocean Breeze Light Theme */
+    --background: 240 100% 99%; /* ocean-50 */
+    --foreground: 210 100% 15%; /* ocean-900 */
+    --card: 240 100% 99%; /* ocean-50 */
+    --card-foreground: 210 100% 15%; /* ocean-900 */
+    --popover: 240 100% 99%; /* ocean-50 */
+    --popover-foreground: 210 100% 15%; /* ocean-900 */
+    --primary: 199 89% 48%; /* ocean-500 */
+    --primary-foreground: 240 100% 99%; /* ocean-50 */
+    --secondary: 186 100% 94%; /* breeze-100 */
+    --secondary-foreground: 188 100% 19%; /* breeze-900 */
+    --muted: 186 100% 94%; /* breeze-100 */
+    --muted-foreground: 188 85% 35%; /* breeze-700 */
+    --accent: 186 100% 87%; /* breeze-200 */
+    --accent-foreground: 188 100% 19%; /* breeze-900 */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 186 100% 87%; /* breeze-200 */
+    --input: 186 100% 87%; /* breeze-200 */
+    --ring: 199 89% 48%; /* ocean-500 */
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    /* Ocean Breeze Dark Theme */
+    --background: 210 100% 6%; /* ocean-950 */
+    --foreground: 186 100% 94%; /* breeze-100 */
+    --card: 210 100% 6%; /* ocean-950 */
+    --card-foreground: 186 100% 94%; /* breeze-100 */
+    --popover: 210 100% 6%; /* ocean-950 */
+    --popover-foreground: 186 100% 94%; /* breeze-100 */
+    --primary: 186 85% 57%; /* breeze-400 */
+    --primary-foreground: 210 100% 6%; /* ocean-950 */
+    --secondary: 188 100% 19%; /* breeze-900 */
+    --secondary-foreground: 186 100% 94%; /* breeze-100 */
+    --muted: 188 100% 19%; /* breeze-900 */
+    --muted-foreground: 188 85% 35%; /* breeze-700 */
+    --accent: 188 85% 35%; /* breeze-700 */
+    --accent-foreground: 186 100% 94%; /* breeze-100 */
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 188 100% 19%; /* breeze-900 */
+    --input: 188 100% 19%; /* breeze-900 */
+    --ring: 186 85% 57%; /* breeze-400 */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Ocean Breeze Theme */
+@theme {
+  --color-ocean-50: #f0f9ff;
+  --color-ocean-100: #e0f2fe;
+  --color-ocean-200: #bae6fd;
+  --color-ocean-300: #7dd3fc;
+  --color-ocean-400: #38bdf8;
+  --color-ocean-500: #0ea5e9;
+  --color-ocean-600: #0284c7;
+  --color-ocean-700: #0369a1;
+  --color-ocean-800: #075985;
+  --color-ocean-900: #0c4a6e;
+  --color-ocean-950: #082f49;
+  
+  --color-breeze-50: #ecfeff;
+  --color-breeze-100: #cffafe;
+  --color-breeze-200: #a5f3fc;
+  --color-breeze-300: #67e8f9;
+  --color-breeze-400: #22d3ee;
+  --color-breeze-500: #06b6d4;
+  --color-breeze-600: #0891b2;
+  --color-breeze-700: #0e7490;
+  --color-breeze-800: #155e75;
+  --color-breeze-900: #164e63;
+  --color-breeze-950: #083344;
+}
+
+/* AR.js and A-Frame specific styles */
+a-scene {
+  height: 100vh;
+  width: 100vw;
+}
+
+.ar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.ar-controls {
+  pointer-events: auto;
+}
