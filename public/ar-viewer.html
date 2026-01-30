@@ -2,11 +2,62 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <!-- Preload critical scripts -->
+  <link rel="preload" href="https://aframe.io/releases/1.5.0/aframe.min.js" as="script" crossorigin>
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js" as="script" crossorigin>
   <style>
     * { margin: 0; padding: 0; }
-    html, body { overflow: hidden; width: 100%; height: 100%; }
+    html, body { overflow: hidden; width: 100%; height: 100%; background: #000; }
+    
+    /* Loading screen with camera preview */
+    #loading-screen {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      font-family: -apple-system, sans-serif;
+    }
+    #loading-screen.hidden { display: none; }
+    
+    #camera-preview {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      opacity: 0.3;
+    }
+    
+    .loading-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      color: white;
+    }
+    
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .loading-text {
+      font-size: 16px;
+      opacity: 0.9;
+    }
+    .loading-percent {
+      font-size: 14px;
+      opacity: 0.6;
+      margin-top: 8px;
+    }
     
     #back-btn {
       position: fixed;
@@ -22,7 +73,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 999;
+      z-index: 1001;
       cursor: pointer;
     }
     
@@ -54,6 +105,16 @@
   </style>
 </head>
 <body>
+  <!-- Loading screen shown immediately -->
+  <div id="loading-screen">
+    <video id="camera-preview" autoplay muted playsinline></video>
+    <div class="loading-content">
+      <div class="spinner"></div>
+      <div class="loading-text">Cargando experiencia AR...</div>
+      <div class="loading-percent" id="loading-percent">Iniciando cámara...</div>
+    </div>
+  </div>
+  
   <button id="back-btn" onclick="history.back()">
     <svg width="24" height="24" fill="none" stroke="#fff" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -64,101 +125,85 @@
     <span>Buscando imagen...</span>
   </div>
   <script>
-    // Register video-texture component
-    AFRAME.registerComponent('video-texture', {
-      schema: { src: { type: 'selector' } },
-      init: function() {
-        this.video = this.data.src;
-        if (this.video) {
-          this.texture = new THREE.VideoTexture(this.video);
-          this.texture.minFilter = THREE.LinearFilter;
-          this.texture.magFilter = THREE.LinearFilter;
-          const mesh = this.el.getObject3D('mesh');
-          if (mesh) {
-            mesh.material = new THREE.MeshBasicMaterial({
-              map: this.texture,
-              side: THREE.DoubleSide
-            });
-          }
-        }
-      },
-      tick: function() {
-        if (this.texture && this.video?.readyState >= 2) {
-          this.texture.needsUpdate = true;
-        }
-      }
-    });
-
-    // Register target handler
-    AFRAME.registerComponent('target-handler', {
-      init: function() {
-        this.video = document.querySelector('#vid');
-        const status = document.querySelector('#status');
-        const statusText = status?.querySelector('span');
-        
-        this.el.addEventListener('targetFound', () => {
-          console.log('Target found!');
-          if (status) status.classList.add('found');
-          if (statusText) statusText.textContent = '¡Imagen detectada!';
-          if (this.video) {
-            this.video.currentTime = 0;
-            // Safari fix: play muted first, then try to unmute
-            this.video.muted = true;
-            this.video.play().then(() => {
-              // Try to unmute after playback starts
-              this.video.muted = false;
-            }).catch(e => {
-              console.log('Play error:', e);
-              // If unmuted play fails, keep it muted
-              this.video.muted = true;
-              this.video.play();
-            });
-          }
+    const loadingPercent = document.getElementById('loading-percent');
+    const cameraPreview = document.getElementById('camera-preview');
+    const loadingScreen = document.getElementById('loading-screen');
+    
+    let scriptsLoaded = false;
+    let dataLoaded = false;
+    let postcard = null;
+    let videoUrl = null;
+    let targetUrl = null;
+    let planeWidth = 1;
+    let planeHeight = 0.5625;
+    
+    // Start camera preview immediately
+    async function startCameraPreview() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
         });
-        this.el.addEventListener('targetLost', () => {
-          console.log('Target lost');
-          if (status) status.classList.remove('found');
-          if (statusText) statusText.textContent = 'Buscando imagen...';
-          if (this.video) this.video.pause();
-        });
+        cameraPreview.srcObject = stream;
+        loadingPercent.textContent = 'Cámara lista...';
+        console.log('📷 Camera preview started');
+      } catch (e) {
+        console.log('Camera preview not available:', e);
+        loadingPercent.textContent = 'Cargando...';
       }
-    });
-
-    async function init() {
+    }
+    
+    // Load scripts dynamically
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+    
+    async function loadScripts() {
+      const startTime = Date.now();
+      
+      loadingPercent.textContent = 'Cargando A-Frame...';
+      await loadScript('https://aframe.io/releases/1.5.0/aframe.min.js');
+      console.log('⏱️ A-Frame loaded in', Date.now() - startTime, 'ms');
+      
+      loadingPercent.textContent = 'Cargando MindAR...';
+      await loadScript('https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js');
+      console.log('⏱️ MindAR loaded in', Date.now() - startTime, 'ms');
+      
+      // Register components after scripts load
+      registerComponents();
+      scriptsLoaded = true;
+      loadingPercent.textContent = 'Preparando AR...';
+      
+      checkReady();
+    }
+    
+    // Fetch postcard data
+    async function loadData() {
       const urlParams = new URLSearchParams(window.location.search);
       const postcardId = urlParams.get('id');
       
       if (!postcardId) {
-        document.body.innerHTML = '<div style="color:white;padding:20px;">Error: No postcard ID</div>';
-        return;
+        throw new Error('No postcard ID');
       }
-
-      try {
-        const response = await fetch('/api/postcards/' + postcardId);
-        const result = await response.json();
-        const postcard = result.data;
-
-        console.log('📹 Postcard data:', postcard);
-        console.log('📹 Video URL:', postcard?.video_url);
-        
-        if (!postcard?.video_url) {
-          document.body.innerHTML = '<div style="color:white;padding:20px;">Error: No video</div>';
-          return;
-        }
-
-        // Ensure video URL is absolute
-        let videoUrl = postcard.video_url;
-        if (!videoUrl.startsWith('http')) {
-          console.error('❌ Video URL is not absolute:', videoUrl);
-          document.body.innerHTML = '<div style="color:white;padding:20px;">Error: Invalid video URL</div>';
-          return;
-        }
-        
-        console.log('✅ Using video URL:', videoUrl);
-
-        const targetUrl = `/api/ar/mind-target/${postcard.user_id}/${postcard.id}`;
-
-        // Pre-load video to get dimensions
+      
+      const response = await fetch('/api/postcards/' + postcardId);
+      const result = await response.json();
+      postcard = result.data;
+      
+      if (!postcard?.video_url) {
+        throw new Error('No video URL');
+      }
+      
+      videoUrl = postcard.video_url;
+      targetUrl = `/api/ar/mind-target/${postcard.user_id}/${postcard.id}`;
+      
+      // Get video dimensions
+      await new Promise((resolve) => {
         const preloadVideo = document.createElement('video');
         preloadVideo.crossOrigin = 'anonymous';
         preloadVideo.muted = true;
@@ -166,85 +211,138 @@
         preloadVideo.preload = 'metadata';
         
         preloadVideo.onloadedmetadata = () => {
-          const videoWidth = preloadVideo.videoWidth;
-          const videoHeight = preloadVideo.videoHeight;
-          const aspectRatio = videoWidth / videoHeight;
-          
-          console.log('📐 Video dimensions:', videoWidth, 'x', videoHeight, 'Aspect ratio:', aspectRatio);
-          
-          // Calculate plane dimensions based on aspect ratio
-          // Base size is 1 unit, scale the other dimension
-          let planeWidth, planeHeight;
-          
+          const aspectRatio = preloadVideo.videoWidth / preloadVideo.videoHeight;
           if (aspectRatio >= 1) {
-            // Horizontal video (landscape)
             planeWidth = 1;
             planeHeight = 1 / aspectRatio;
-            console.log('📐 Horizontal video - plane:', planeWidth, 'x', planeHeight);
           } else {
-            // Vertical video (portrait)
             planeWidth = aspectRatio;
             planeHeight = 1;
-            console.log('📐 Vertical video - plane:', planeWidth, 'x', planeHeight);
           }
-          
-          createARScene(targetUrl, videoUrl, planeWidth, planeHeight);
+          console.log('📐 Video aspect ratio:', aspectRatio);
+          resolve();
         };
-        
-        preloadVideo.onerror = (e) => {
-          console.error('❌ Video preload error:', e, preloadVideo.error);
-          // Fallback: create scene with default dimensions
-          createARScene(targetUrl, videoUrl, 1, 0.5625); // 16:9 default
-        };
-        
+        preloadVideo.onerror = () => resolve(); // Use defaults
         preloadVideo.src = videoUrl;
-        console.log('📹 Preloading video to get dimensions...');
-        
-        function createARScene(targetUrl, videoUrl, planeWidth, planeHeight) {
-          document.body.innerHTML = `
-            <button id="back-btn" onclick="history.back()">
-              <svg width="24" height="24" fill="none" stroke="#fff" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-              </svg>
-            </button>
-            <div id="status">
-              <div class="dot"></div>
-              <span>Buscando imagen...</span>
-            </div>
-            <a-scene
-              mindar-image="imageTargetSrc: ${targetUrl}; autoStart: true;"
-              color-space="sRGB"
-              renderer="colorManagement: true, physicallyCorrectLights"
-              vr-mode-ui="enabled: false"
-              device-orientation-permission-ui="enabled: false"
-            >
-              <a-assets>
-                <video id="vid" crossorigin="anonymous" loop muted playsinline></video>
-              </a-assets>
-              
-              <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-              
-              <a-entity mindar-image-target="targetIndex: 0" target-handler>
-                <a-plane position="0 0 0" width="${planeWidth}" height="${planeHeight}" video-texture="src: #vid" material="shader: flat"></a-plane>
-              </a-entity>
-            </a-scene>
-          `;
-          
-          // Set video source after scene is created
-          setTimeout(() => {
-            const vid = document.querySelector('#vid');
-            if (vid) {
-              vid.src = videoUrl;
-              console.log('📹 Video src set to element');
+      });
+      
+      dataLoaded = true;
+      checkReady();
+    }
+    
+    function registerComponents() {
+      AFRAME.registerComponent('video-texture', {
+        schema: { src: { type: 'selector' } },
+        init: function() {
+          this.video = this.data.src;
+          if (this.video) {
+            this.texture = new THREE.VideoTexture(this.video);
+            this.texture.minFilter = THREE.LinearFilter;
+            this.texture.magFilter = THREE.LinearFilter;
+            const mesh = this.el.getObject3D('mesh');
+            if (mesh) {
+              mesh.material = new THREE.MeshBasicMaterial({
+                map: this.texture,
+                side: THREE.DoubleSide
+              });
             }
-          }, 100);
+          }
+        },
+        tick: function() {
+          if (this.texture && this.video?.readyState >= 2) {
+            this.texture.needsUpdate = true;
+          }
         }
+      });
+
+      AFRAME.registerComponent('target-handler', {
+        init: function() {
+          this.video = document.querySelector('#vid');
+          const status = document.querySelector('#status');
+          const statusText = status?.querySelector('span');
+          
+          this.el.addEventListener('targetFound', () => {
+            console.log('Target found!');
+            if (status) status.classList.add('found');
+            if (statusText) statusText.textContent = '¡Imagen detectada!';
+            if (this.video) {
+              this.video.currentTime = 0;
+              this.video.muted = true;
+              this.video.play().then(() => {
+                this.video.muted = false;
+              }).catch(e => {
+                console.log('Play error:', e);
+                this.video.muted = true;
+                this.video.play();
+              });
+            }
+          });
+          this.el.addEventListener('targetLost', () => {
+            console.log('Target lost');
+            if (status) status.classList.remove('found');
+            if (statusText) statusText.textContent = 'Buscando imagen...';
+            if (this.video) this.video.pause();
+          });
+        }
+      });
+    }
+    
+    function checkReady() {
+      if (!scriptsLoaded || !dataLoaded) return;
+      
+      console.log('✅ All ready, creating AR scene');
+      
+      // Stop camera preview
+      if (cameraPreview.srcObject) {
+        cameraPreview.srcObject.getTracks().forEach(t => t.stop());
+      }
+      
+      // Hide loading screen
+      loadingScreen.classList.add('hidden');
+      
+      // Create AR scene
+      const sceneContainer = document.createElement('div');
+      sceneContainer.innerHTML = `
+        <a-scene
+          mindar-image="imageTargetSrc: ${targetUrl}; autoStart: true;"
+          color-space="sRGB"
+          renderer="colorManagement: true, physicallyCorrectLights"
+          vr-mode-ui="enabled: false"
+          device-orientation-permission-ui="enabled: false"
+        >
+          <a-assets>
+            <video id="vid" src="${videoUrl}" crossorigin="anonymous" loop muted playsinline></video>
+          </a-assets>
+          
+          <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+          
+          <a-entity mindar-image-target="targetIndex: 0" target-handler>
+            <a-plane position="0 0 0" width="${planeWidth}" height="${planeHeight}" video-texture="src: #vid" material="shader: flat"></a-plane>
+          </a-entity>
+        </a-scene>
+      `;
+      document.body.appendChild(sceneContainer);
+    }
+    
+    // Start everything in parallel
+    window.addEventListener('DOMContentLoaded', async () => {
+      const startTime = Date.now();
+      console.log('🚀 Starting parallel load...');
+      
+      try {
+        // Run all in parallel
+        await Promise.all([
+          startCameraPreview(),
+          loadScripts(),
+          loadData()
+        ]);
+        
+        console.log('⏱️ Total load time:', Date.now() - startTime, 'ms');
       } catch (error) {
+        console.error('Load error:', error);
         document.body.innerHTML = '<div style="color:white;padding:20px;">Error: ' + error.message + '</div>';
       }
-    }
-
-    window.addEventListener('DOMContentLoaded', init);
+    });
   </script>
 </body>
 </html>
