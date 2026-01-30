@@ -293,19 +293,19 @@ export function withErrorHandling<T>(
         }
       }
       
-      // Generic error response
+      // Generic error response - show actual error message for debugging
       logger.error(`[${requestId}] Unhandled error: ${errorMessage}`);
+      console.error(`[${requestId}] FULL ERROR:`, error);
       return createApiResponse(
         false,
         undefined,
         {
-          message: 'An unexpected error occurred. Please try again.',
+          message: errorMessage || 'An unexpected error occurred. Please try again.',
           code: 'INTERNAL_ERROR',
-          details: process.env.NODE_ENV === 'development' ? {
-            message: errorMessage,
-            stack: error instanceof Error ? error.stack : undefined,
-            requestId
-          } : undefined
+          details: {
+            requestId,
+            errorType: error instanceof Error ? error.name : 'Unknown'
+          }
         }
       ) as unknown as NextResponse<ApiResponse<T>>;
     }
