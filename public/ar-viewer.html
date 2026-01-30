@@ -158,54 +158,87 @@
 
         const targetUrl = `/api/ar/mind-target/${postcard.user_id}/${postcard.id}`;
 
-        // Create video element first to test loading
-        const testVideo = document.createElement('video');
-        testVideo.crossOrigin = 'anonymous';
-        testVideo.muted = true;
-        testVideo.playsInline = true;
-        testVideo.loop = true;
+        // Pre-load video to get dimensions
+        const preloadVideo = document.createElement('video');
+        preloadVideo.crossOrigin = 'anonymous';
+        preloadVideo.muted = true;
+        preloadVideo.playsInline = true;
+        preloadVideo.preload = 'metadata';
         
-        testVideo.onloadeddata = () => {
-          console.log('✅ Video loaded successfully!', testVideo.videoWidth, 'x', testVideo.videoHeight);
-        };
-        testVideo.onerror = (e) => {
-          console.error('❌ Video load error:', e, testVideo.error);
-        };
-        testVideo.oncanplay = () => {
-          console.log('✅ Video can play');
-        };
-        
-        testVideo.src = videoUrl;
-        console.log('📹 Testing video load...');
-
-        document.body.innerHTML = `
-          <a-scene
-            mindar-image="imageTargetSrc: ${targetUrl}; autoStart: true;"
-            color-space="sRGB"
-            renderer="colorManagement: true, physicallyCorrectLights"
-            vr-mode-ui="enabled: false"
-            device-orientation-permission-ui="enabled: false"
-          >
-            <a-assets>
-              <video id="vid" crossorigin="anonymous" loop muted playsinline></video>
-            </a-assets>
-            
-            <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-            
-            <a-entity mindar-image-target="targetIndex: 0" target-handler>
-              <a-plane position="0 0 0" width="1" height="1.78" video-texture="src: #vid" material="shader: flat"></a-plane>
-            </a-entity>
-          </a-scene>
-        `;
-        
-        // Set video source after scene is created
-        setTimeout(() => {
-          const vid = document.querySelector('#vid');
-          if (vid) {
-            vid.src = videoUrl;
-            console.log('📹 Video src set to element');
+        preloadVideo.onloadedmetadata = () => {
+          const videoWidth = preloadVideo.videoWidth;
+          const videoHeight = preloadVideo.videoHeight;
+          const aspectRatio = videoWidth / videoHeight;
+          
+          console.log('📐 Video dimensions:', videoWidth, 'x', videoHeight, 'Aspect ratio:', aspectRatio);
+          
+          // Calculate plane dimensions based on aspect ratio
+          // Base size is 1 unit, scale the other dimension
+          let planeWidth, planeHeight;
+          
+          if (aspectRatio >= 1) {
+            // Horizontal video (landscape)
+            planeWidth = 1;
+            planeHeight = 1 / aspectRatio;
+            console.log('📐 Horizontal video - plane:', planeWidth, 'x', planeHeight);
+          } else {
+            // Vertical video (portrait)
+            planeWidth = aspectRatio;
+            planeHeight = 1;
+            console.log('📐 Vertical video - plane:', planeWidth, 'x', planeHeight);
           }
-        }, 100);
+          
+          createARScene(targetUrl, videoUrl, planeWidth, planeHeight);
+        };
+        
+        preloadVideo.onerror = (e) => {
+          console.error('❌ Video preload error:', e, preloadVideo.error);
+          // Fallback: create scene with default dimensions
+          createARScene(targetUrl, videoUrl, 1, 0.5625); // 16:9 default
+        };
+        
+        preloadVideo.src = videoUrl;
+        console.log('📹 Preloading video to get dimensions...');
+        
+        function createARScene(targetUrl, videoUrl, planeWidth, planeHeight) {
+          document.body.innerHTML = `
+            <button id="back-btn" onclick="history.back()">
+              <svg width="24" height="24" fill="none" stroke="#fff" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <div id="status">
+              <div class="dot"></div>
+              <span>Buscando imagen...</span>
+            </div>
+            <a-scene
+              mindar-image="imageTargetSrc: ${targetUrl}; autoStart: true;"
+              color-space="sRGB"
+              renderer="colorManagement: true, physicallyCorrectLights"
+              vr-mode-ui="enabled: false"
+              device-orientation-permission-ui="enabled: false"
+            >
+              <a-assets>
+                <video id="vid" crossorigin="anonymous" loop muted playsinline></video>
+              </a-assets>
+              
+              <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+              
+              <a-entity mindar-image-target="targetIndex: 0" target-handler>
+                <a-plane position="0 0 0" width="${planeWidth}" height="${planeHeight}" video-texture="src: #vid" material="shader: flat"></a-plane>
+              </a-entity>
+            </a-scene>
+          `;
+          
+          // Set video source after scene is created
+          setTimeout(() => {
+            const vid = document.querySelector('#vid');
+            if (vid) {
+              vid.src = videoUrl;
+              console.log('📹 Video src set to element');
+            }
+          }, 100);
+        }
       } catch (error) {
         document.body.innerHTML = '<div style="color:white;padding:20px;">Error: ' + error.message + '</div>';
       }
