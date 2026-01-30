@@ -110,11 +110,10 @@
 <body>
   <!-- Loading screen shown immediately -->
   <div id="loading-screen">
-    <video id="camera-preview" autoplay muted playsinline></video>
     <div class="loading-content">
       <div class="spinner"></div>
       <div class="loading-text">Cargando experiencia AR...</div>
-      <div class="loading-percent" id="loading-percent">Iniciando cámara...</div>
+      <div class="loading-percent" id="loading-percent">Preparando...</div>
     </div>
   </div>
   
@@ -129,7 +128,6 @@
   </div>
   <script>
     const loadingPercent = document.getElementById('loading-percent');
-    const cameraPreview = document.getElementById('camera-preview');
     const loadingScreen = document.getElementById('loading-screen');
     
     let scriptsLoaded = false;
@@ -140,20 +138,6 @@
     let planeWidth = 1;
     let planeHeight = 0.5625;
     
-    // Start camera preview immediately
-    async function startCameraPreview() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
-        });
-        cameraPreview.srcObject = stream;
-        loadingPercent.textContent = 'Cámara lista...';
-        console.log('📷 Camera preview started');
-      } catch (e) {
-        console.log('Camera preview not available:', e);
-        loadingPercent.textContent = 'Cargando...';
-      }
-    }
     
     // Load scripts dynamically
     function loadScript(src) {
@@ -187,6 +171,7 @@
     
     // Fetch postcard data
     async function loadData() {
+      const startTime = Date.now();
       const urlParams = new URLSearchParams(window.location.search);
       const postcardId = urlParams.get('id');
       
@@ -194,7 +179,9 @@
         throw new Error('No postcard ID');
       }
       
+      console.log('📡 Fetching postcard data...');
       const response = await fetch('/api/postcards/' + postcardId);
+      console.log('📡 API responded in', Date.now() - startTime, 'ms');
       const result = await response.json();
       postcard = result.data;
       
@@ -205,46 +192,8 @@
       videoUrl = postcard.video_url;
       targetUrl = `/api/ar/mind-target/${postcard.user_id}/${postcard.id}`;
       
-      // Get video dimensions with timeout (don't block loading)
-      await new Promise((resolve) => {
-        const preloadVideo = document.createElement('video');
-        preloadVideo.crossOrigin = 'anonymous';
-        preloadVideo.muted = true;
-        preloadVideo.playsInline = true;
-        preloadVideo.preload = 'metadata';
-        
-        let resolved = false;
-        const done = () => {
-          if (resolved) return;
-          resolved = true;
-          resolve();
-        };
-        
-        // Timeout after 3 seconds - use defaults
-        const timeout = setTimeout(() => {
-          console.log('⏱️ Video metadata timeout, using defaults');
-          done();
-        }, 3000);
-        
-        preloadVideo.onloadedmetadata = () => {
-          clearTimeout(timeout);
-          const aspectRatio = preloadVideo.videoWidth / preloadVideo.videoHeight;
-          if (aspectRatio >= 1) {
-            planeWidth = 1;
-            planeHeight = 1 / aspectRatio;
-          } else {
-            planeWidth = aspectRatio;
-            planeHeight = 1;
-          }
-          console.log('📐 Video aspect ratio:', aspectRatio);
-          done();
-        };
-        preloadVideo.onerror = () => {
-          clearTimeout(timeout);
-          done();
-        };
-        preloadVideo.src = videoUrl;
-      });
+      // Don't wait for video metadata - use defaults and adjust later
+      console.log('📹 Data loaded, using default 16:9 dimensions');
       
       dataLoaded = true;
       checkReady();
@@ -255,6 +204,8 @@
         schema: { src: { type: 'selector' } },
         init: function() {
           this.video = this.data.src;
+          this.dimensionsSet = false;
+          
           if (this.video) {
             this.texture = new THREE.VideoTexture(this.video);
             this.texture.minFilter = THREE.LinearFilter;
@@ -271,6 +222,21 @@
         tick: function() {
           if (this.texture && this.video?.readyState >= 2) {
             this.texture.needsUpdate = true;
+            
+            // Adjust plane dimensions once when video is ready
+            if (!this.dimensionsSet && this.video.videoWidth > 0) {
+              this.dimensionsSet = true;
+              const aspectRatio = this.video.videoWidth / this.video.videoHeight;
+              let w, h;
+              if (aspectRatio >= 1) {
+                w = 1; h = 1 / aspectRatio;
+              } else {
+                w = aspectRatio; h = 1;
+              }
+              this.el.setAttribute('width', w);
+              this.el.setAttribute('height', h);
+              console.log('📐 Adjusted plane to', w, 'x', h);
+            }
           }
         }
       });
@@ -312,12 +278,7 @@
       
       console.log('✅ All ready, creating AR scene');
       
-      // Stop camera preview
-      if (cameraPreview.srcObject) {
-        cameraPreview.srcObject.getTracks().forEach(t => t.stop());
-      }
-      
-      // Remove loading screen completely from DOM
+      // Remove loading screen
       loadingScreen.remove();
       
       // Create AR scene
@@ -350,9 +311,8 @@
       console.log('🚀 Starting parallel load...');
       
       try {
-        // Run all in parallel
+        // Run scripts and data loading in parallel
         await Promise.all([
-          startCameraPreview(),
           loadScripts(),
           loadData()
         ]);

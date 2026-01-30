@@ -102,129 +102,46 @@ async function handleGetPostcard(
     );
   }
 
-  // Generate signed URLs dynamically for image and video
+  // Generate signed URLs dynamically for image and video - IN PARALLEL
   logger.debug('Generating signed URLs for postcard assets', { postcardId });
+  const startTime = Date.now();
   
-  let imageUrl = '';
-  let videoUrl = '';
+  // Prepare paths
+  const imagePath = `${postcard.user_id}/${postcard.id}/image.JPG`;
+  let videoPath = postcard.video_url;
   
-  // Generate signed URL for image
-  if (postcard.image_url || true) { // Always try to generate for existing postcards
-    // Extract just the path from the existing URL if it's already a signed URL
-    let imagePath = `${postcard.user_id}/${postcard.id}/image.JPG`; // Use JPG extension
-    
-    try {
-      const { createSignedUrlWithRetry } = await import('@/lib/storage-utils');
-      imageUrl = await createSignedUrlWithRetry(
-        'postcard-images',
-        imagePath,
-        {
-          operation: `GET /api/postcards/${postcardId}`,
-          timestamp: new Date().toISOString(),
-          postcardId,
-          userId: postcard.user_id
-        },
-        3600
-      );
-    } catch (_err) {
-      logger.warn('Failed to generate signed URL for image', { postcardId }, _err instanceof Error ? _err : new Error(String(_err)));
-      imageUrl = postcard.image_url || '';
-    }
+  // If video_url is a signed URL, extract the path
+  if (videoPath && videoPath.includes('supabase.co')) {
+    const match = videoPath.match(/postcard-videos\/([^?]+)/);
+    if (match) videoPath = match[1];
+  }
+  if (!videoPath) {
+    videoPath = `${postcard.user_id}/${postcard.id}/video.mp4`;
   }
   
-  // Generate signed URL for video
-  if (postcard.video_url || true) { // Always try to generate for existing postcards
-    // Use existing video_url as path if it's a storage path (not a signed URL)
-    // The video_url should contain the full path with correct extension (e.g., video.mp4, video.mov)
-    let videoPath = postcard.video_url;
-    
-    // If video_url is a signed URL, extract the path
-    if (videoPath && videoPath.includes('supabase.co')) {
-      // Extract path from signed URL: .../postcard-videos/user_id/postcard_id/video.ext?token=...
-      const match = videoPath.match(/postcard-videos\/([^?]+)/);
-      if (match) {
-        videoPath = match[1];
-      }
-    }
-    
-    // Fallback: try common extensions if path is not set
-    if (!videoPath) {
-      videoPath = `${postcard.user_id}/${postcard.id}/video.mp4`;
-    }
-    
-    try {
-      console.log('📹 [API-GET] Generating signed URL for video:', { videoPath, postcardId });
-      const { createSignedUrlWithRetry } = await import('@/lib/storage-utils');
-      videoUrl = await createSignedUrlWithRetry(
-        'postcard-videos',
-        videoPath,
-        {
-          operation: `GET /api/postcards/${postcardId}`,
-          timestamp: new Date().toISOString(),
-          postcardId,
-          userId: postcard.user_id
-        },
-        3600
-      );
-      console.log('✅ [API-GET] Video signed URL generated successfully');
-    } catch (_err) {
-      console.error('❌ [API-GET] Failed to generate signed URL for video:', _err);
-      logger.warn('Failed to generate signed URL for video', { postcardId }, _err instanceof Error ? _err : new Error(String(_err)));
-      // If generation fails, just use the path stored in the database
-      videoUrl = postcard.video_url || '';
-    }
-  }
+  const urlContext = {
+    operation: `GET /api/postcards/${postcardId}`,
+    timestamp: new Date().toISOString(),
+    postcardId,
+    userId: postcard.user_id
+  };
+  
+  // Import once
+  const { createSignedUrlWithRetry } = await import('@/lib/storage-utils');
+  
+  // Generate ALL signed URLs in parallel with reduced retries
+  const [imageResult, videoResult] = await Promise.allSettled([
+    createSignedUrlWithRetry('postcard-images', imagePath, urlContext, 3600, { maxAttempts: 1, baseDelay: 500 }),
+    createSignedUrlWithRetry('postcard-videos', videoPath, urlContext, 3600, { maxAttempts: 1, baseDelay: 500 })
+  ]);
+  
+  const imageUrl = imageResult.status === 'fulfilled' ? imageResult.value : (postcard.image_url || '');
+  const videoUrl = videoResult.status === 'fulfilled' ? videoResult.value : (postcard.video_url || '');
+  
+  console.log(`⏱️ [API-GET] Signed URLs generated in ${Date.now() - startTime}ms`);
 
-  // Generate signed URLs for NFT descriptors
-  let nftDescriptors = postcard.nft_descriptors;
-  if (nftDescriptors && postcard.processing_status === 'ready') {
-    try {
-      const { createSignedUrlWithRetry } = await import('@/lib/storage-utils');
-      const basePath = `${postcard.user_id}/${postcard.id}/nft/descriptors`;
-      
-      // Generate signed URLs for each descriptor file
-      const descriptorFiles = {
-        iset: '',
-        fset: '',
-        fset3: ''
-      };
-      
-      // Generate signed URLs for each file type
-      for (const fileType of ['iset', 'fset', 'fset3']) {
-        const filePath = `${basePath}.${fileType}`;
-        try {
-          descriptorFiles[fileType as keyof typeof descriptorFiles] = await createSignedUrlWithRetry(
-            'postcards', // Using postcards bucket for NFT descriptors
-            filePath,
-            {
-              operation: `GET /api/postcards/${postcardId}`,
-              timestamp: new Date().toISOString(),
-              postcardId,
-              userId: postcard.user_id
-            },
-            3600
-          );
-        } catch (fileErr) {
-          logger.warn(`Failed to generate signed URL for ${fileType} descriptor`, { 
-            postcardId
-          }, fileErr instanceof Error ? fileErr : new Error(String(fileErr)));
-        }
-      }
-      
-      // Update nft_descriptors with signed URLs (only new format)
-      nftDescriptors = {
-        ...(typeof nftDescriptors === 'object' && nftDescriptors !== null && !Array.isArray(nftDescriptors) ? nftDescriptors : {}),
-        files: descriptorFiles
-        // Removed descriptorUrl to force use of new proxy format
-      };
-      
-      logger.debug('Generated signed URLs for NFT descriptors', { 
-        postcardId
-      });
-    } catch (err) {
-      logger.warn('Failed to generate signed URLs for NFT descriptors', { postcardId }, err instanceof Error ? err : new Error(String(err)));
-    }
-  }
+  // NFT descriptors - just pass through, no need for signed URLs (using public bucket or proxy)
+  const nftDescriptors = postcard.nft_descriptors;
 
   console.log('✅ [API-GET] Postcard fetched successfully:', {
     id: postcard.id,
