@@ -101,6 +101,7 @@
           if (status) status.classList.add('found');
           if (statusText) statusText.textContent = '¡Imagen detectada!';
           if (this.video) {
+            this.video.muted = false;
             this.video.currentTime = 0;
             this.video.play();
           }
