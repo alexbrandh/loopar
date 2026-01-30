@@ -281,28 +281,29 @@
       // Remove loading screen
       loadingScreen.remove();
       
-      // Create AR scene
-      const sceneContainer = document.createElement('div');
-      sceneContainer.innerHTML = `
-        <a-scene
-          mindar-image="imageTargetSrc: ${targetUrl}; autoStart: true;"
-          color-space="sRGB"
-          renderer="colorManagement: true, physicallyCorrectLights"
-          vr-mode-ui="enabled: false"
-          device-orientation-permission-ui="enabled: false"
-        >
-          <a-assets>
-            <video id="vid" src="${videoUrl}" crossorigin="anonymous" loop muted playsinline></video>
-          </a-assets>
-          
-          <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-          
-          <a-entity mindar-image-target="targetIndex: 0" target-handler>
-            <a-plane position="0 0 0" width="${planeWidth}" height="${planeHeight}" video-texture="src: #vid" material="shader: flat"></a-plane>
-          </a-entity>
-        </a-scene>
+      // Create AR scene directly (A-Frame needs to be direct child of body)
+      const scene = document.createElement('a-scene');
+      scene.setAttribute('mindar-image', `imageTargetSrc: ${targetUrl}; autoStart: true;`);
+      scene.setAttribute('color-space', 'sRGB');
+      scene.setAttribute('renderer', 'colorManagement: true, physicallyCorrectLights');
+      scene.setAttribute('vr-mode-ui', 'enabled: false');
+      scene.setAttribute('device-orientation-permission-ui', 'enabled: false');
+      scene.setAttribute('embedded', '');
+      
+      scene.innerHTML = `
+        <a-assets>
+          <video id="vid" src="${videoUrl}" crossorigin="anonymous" loop muted playsinline></video>
+        </a-assets>
+        
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+        
+        <a-entity mindar-image-target="targetIndex: 0" target-handler>
+          <a-plane position="0 0 0" width="${planeWidth}" height="${planeHeight}" video-texture="src: #vid" material="shader: flat"></a-plane>
+        </a-entity>
       `;
-      document.body.appendChild(sceneContainer);
+      
+      document.body.appendChild(scene);
+      console.log('📷 A-Scene added to body');
     }
     
     // Start everything in parallel
