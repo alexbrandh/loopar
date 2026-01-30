@@ -896,6 +896,43 @@ export default function NewPostcard() {
               </CardContent>
             </Card>
 
+            {/* Progress Bar - Shown at bottom when creating */}
+            {currentStep !== 'idle' && (
+              <Card className="border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 sticky bottom-4">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      {currentStep !== 'completed' ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                      ) : (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      )}
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
+                          {currentStep === 'converting-video' && 'Convirtiendo video...'}
+                          {currentStep === 'creating' && 'Creando postal...'}
+                          {currentStep === 'uploading-image' && 'Subiendo imagen...'}
+                          {currentStep === 'uploading-video' && 'Subiendo video...'}
+                          {currentStep === 'generating-nft' && 'Generando experiencia AR...'}
+                          {currentStep === 'completed' && '¡Postal creada!'}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {overallProgress < 100 ? `~${Math.max(1, Math.round((100 - overallProgress) / 10))}s restantes` : 'Redirigiendo...'}
+                        </p>
+                      </div>
+                    </div>
+                    {canCancel && currentStep !== 'completed' && (
+                      <Button type="button" variant="outline" size="sm" onClick={handleCancelOperation} disabled={isCancelling} className="text-red-600">
+                        {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                      </Button>
+                    )}
+                  </div>
+                  <Progress value={overallProgress} className="h-3" />
+                  <p className="text-xs text-gray-500 mt-2 text-right">{Math.round(overallProgress)}% completado</p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Submit Button */}
             <div className="flex justify-end gap-4">
               <Link href="/dashboard">
