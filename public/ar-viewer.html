@@ -352,9 +352,66 @@
           log('✅ Scene loaded');
           loading.style.display = 'none';
           showUI();
+          
+          // Force camera video to be visible as background
+          setTimeout(() => {
+            const videos = document.querySelectorAll('video');
+            videos.forEach(v => {
+              if (v.id !== 'vid') {
+                // This is the camera video
+                v.style.cssText = `
+                  position: fixed !important;
+                  top: 0 !important;
+                  left: 0 !important;
+                  width: 100vw !important;
+                  height: 100vh !important;
+                  object-fit: cover !important;
+                  z-index: -1 !important;
+                  opacity: 1 !important;
+                  display: block !important;
+                `;
+                log('📹 Camera video styled');
+              }
+            });
+            
+            // Also check for canvas
+            const canvas = document.querySelector('.a-canvas');
+            if (canvas) {
+              canvas.style.cssText = `
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                background: transparent !important;
+              `;
+              log('🎨 Canvas styled');
+            }
+          }, 500);
         });
         
-        scene.addEventListener('arReady', () => log('✅ AR Ready'));
+        scene.addEventListener('arReady', () => {
+          log('✅ AR Ready');
+          // Try again when AR is ready
+          setTimeout(() => {
+            const videos = document.querySelectorAll('video');
+            videos.forEach(v => {
+              if (v.id !== 'vid') {
+                v.style.cssText = `
+                  position: fixed !important;
+                  top: 0 !important;
+                  left: 0 !important;
+                  width: 100vw !important;
+                  height: 100vh !important;
+                  object-fit: cover !important;
+                  z-index: -1 !important;
+                  opacity: 1 !important;
+                  display: block !important;
+                `;
+              }
+            });
+          }, 100);
+        });
         
       } catch (error) {
         log('❌ Error: ' + error.message);
