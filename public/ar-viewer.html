@@ -4,7 +4,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -125,30 +125,6 @@
     
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.1); } }
-    
-    /* Force MindAR camera video to fullscreen */
-    .mindar-ui-overlay { display: none !important; }
-    
-    a-scene video:not(#vid) {
-      position: fixed !important;
-      top: 50% !important;
-      left: 50% !important;
-      transform: translate(-50%, -50%) !important;
-      min-width: 100vw !important;
-      min-height: 100vh !important;
-      width: auto !important;
-      height: auto !important;
-      object-fit: cover !important;
-      z-index: -1 !important;
-    }
-    
-    .a-canvas {
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 100vw !important;
-      height: 100vh !important;
-    }
   </style>
 </head>
 <body>
@@ -301,12 +277,11 @@
         // Create scene HTML
         document.body.insertAdjacentHTML('beforeend', `
           <a-scene
-            mindar-image="imageTargetSrc: ${targetUrl}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no; filterMinCF: 0.0001; filterBeta: 0.001;"
+            mindar-image="imageTargetSrc: ${targetUrl}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
             color-space="sRGB"
-            renderer="colorManagement: true; physicallyCorrectLights: true; alpha: false; antialias: true;"
+            renderer="colorManagement: true, physicallyCorrectLights"
             vr-mode-ui="enabled: false"
             device-orientation-permission-ui="enabled: false"
-            embedded
           >
             <a-assets>
               <video id="vid" 
@@ -353,65 +328,10 @@
           log('✅ Scene loaded');
           loading.style.display = 'none';
           showUI();
-          
-          // Force camera video to be visible as background
-          setTimeout(() => {
-            const videos = document.querySelectorAll('video');
-            videos.forEach(v => {
-              if (v.id !== 'vid') {
-                // This is the camera video
-                v.style.cssText = `
-                  position: fixed !important;
-                  top: 0 !important;
-                  left: 0 !important;
-                  width: 100vw !important;
-                  height: 100vh !important;
-                  object-fit: cover !important;
-                  z-index: -1 !important;
-                  opacity: 1 !important;
-                  display: block !important;
-                `;
-                log('📹 Camera video styled');
-              }
-            });
-            
-            // Also check for canvas
-            const canvas = document.querySelector('.a-canvas');
-            if (canvas) {
-              canvas.style.cssText = `
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                background: transparent !important;
-              `;
-              log('🎨 Canvas styled');
-            }
-          }, 500);
         });
         
         scene.addEventListener('arReady', () => {
           log('✅ AR Ready');
-          // Try again when AR is ready
-          setTimeout(() => {
-            const videos = document.querySelectorAll('video');
-            videos.forEach(v => {
-              if (v.id !== 'vid') {
-                v.style.cssText = `
-                  position: fixed !important;
-                  top: 0 !important;
-                  left: 0 !important;
-                  width: 100vw !important;
-                  height: 100vh !important;
-                  object-fit: cover !important;
-                  z-index: -1 !important;
-                  opacity: 1 !important;
-                  display: block !important;
-                `;
-              }
-            });
-          }, 100);
         });
         
       } catch (error) {
