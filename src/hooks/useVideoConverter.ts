@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { fetchFile } from '@ffmpeg/util';
 
 interface ConversionProgress {
   percent: number;
@@ -61,12 +61,12 @@ export function useVideoConverter(): UseVideoConverterReturn {
 
     setProgress({ percent: 0, message: 'Cargando convertidor de video...' });
 
-    // Load FFmpeg core from CDN
-    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
+    // Load FFmpeg core from CDN - using direct URLs for better compatibility
+    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
     
     await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      coreURL: `${baseURL}/ffmpeg-core.js`,
+      wasmURL: `${baseURL}/ffmpeg-core.wasm`,
     });
 
     loadedRef.current = true;
