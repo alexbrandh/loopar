@@ -32,6 +32,7 @@ import { useUpload } from '@/hooks/useUpload';
 import { usePostcards } from '@/hooks/usePostcards';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useMindARBrowserCompiler } from '@/hooks/useMindARBrowserCompiler';
+import { useVideoConverter, needsConversion } from '@/hooks/useVideoConverter';
 import { logger } from '@/lib/logger';
 
 interface FileWithPreview {
@@ -53,6 +54,7 @@ export default function NewPostcard() {
   const { uploadFile, uploads, cancelUpload, cancelAllUploads } = useUpload();
   const { createPostcard } = usePostcards();
   const { isOnline } = useNetworkStatus();
+  const { convertToMp4, isConverting, progress: conversionProgress } = useVideoConverter();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -60,7 +62,7 @@ export default function NewPostcard() {
   const [videoFile, setVideoFile] = useState<FileWithPreview | null>(null);
 
   // Estados para progreso detallado
-  const [currentStep, setCurrentStep] = useState<'idle' | 'creating' | 'uploading-image' | 'uploading-video' | 'generating-nft' | 'uploading-nft' | 'completed'>('idle');
+  const [currentStep, setCurrentStep] = useState<'idle' | 'converting-video' | 'creating' | 'uploading-image' | 'uploading-video' | 'generating-nft' | 'uploading-nft' | 'completed'>('idle');
   const [overallProgress, setOverallProgress] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [canCancel, setCanCancel] = useState(false);
@@ -179,6 +181,7 @@ export default function NewPostcard() {
   const updateOverallProgress = useCallback((step: typeof currentStep, stepProgress: number = 0) => {
     const stepWeights = {
       idle: 0,
+      'converting-video': 5,
       creating: 10,
       'uploading-image': 30,
       'uploading-video': 30,
@@ -444,8 +447,32 @@ export default function NewPostcard() {
     }
 
     try {
-      setCurrentStep('creating');
       setCanCancel(true);
+      
+      // Convert video if needed (e.g., .mov to .mp4)
+      let finalVideoFile = videoFile.file;
+      if (needsConversion(videoFile.file.name)) {
+        setCurrentStep('converting-video');
+        updateOverallProgress('converting-video');
+        logger.info('Convirtiendo video a formato compatible', { 
+          userId: user.id, 
+          operation: 'convert_video', 
+          metadata: { originalFormat: videoFile.file.name.split('.').pop() } 
+        });
+        
+        toast({
+          title: "Convirtiendo video",
+          description: "Tu video se está convirtiendo a formato MP4 compatible...",
+        });
+        
+        finalVideoFile = await convertToMp4(videoFile.file);
+        logger.info('Video convertido exitosamente', { 
+          operation: 'video_converted', 
+          metadata: { newSize: finalVideoFile.size } 
+        });
+      }
+      
+      setCurrentStep('creating');
       updateOverallProgress('creating');
       logger.info('Iniciando creación de postal', { userId: user.id, operation: 'create_postcard', metadata: { title } });
 
@@ -454,7 +481,7 @@ export default function NewPostcard() {
         title: title.trim(),
         description: description.trim(),
         imageFile: imageFile.file,
-        videoFile: videoFile.file,
+        videoFile: finalVideoFile,
       });
 
       currentPostcardIdRef.current = postcard.postcard.id;
@@ -478,7 +505,7 @@ export default function NewPostcard() {
       const videoUploadId = `video-${postcard.postcard.id}`;
       currentUploadIdsRef.current.video = videoUploadId;
 
-      await uploadFile(videoFile.file, postcard.videoUploadUrl, { uploadId: videoUploadId });
+      await uploadFile(finalVideoFile, postcard.videoUploadUrl, { uploadId: videoUploadId });
       // Video uploaded successfully
       logger.info('Video subido exitosamente', { postcardId: postcard.postcard.id, operation: 'video_upload_complete' });
 
