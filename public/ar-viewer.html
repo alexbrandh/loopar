@@ -2,62 +2,11 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Preload critical scripts -->
-  <link rel="preload" href="https://aframe.io/releases/1.5.0/aframe.min.js" as="script" crossorigin>
-  <link rel="preload" href="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js" as="script" crossorigin>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   <style>
     * { margin: 0; padding: 0; }
-    html, body { overflow: hidden; width: 100%; height: 100%; background: #000; }
-    
-    /* Loading screen with camera preview */
-    #loading-screen {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: #000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      font-family: -apple-system, sans-serif;
-    }
-    #loading-screen.hidden { display: none; }
-    
-    #camera-preview {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      object-fit: cover;
-      opacity: 0.3;
-    }
-    
-    .loading-content {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      color: white;
-    }
-    
-    .spinner {
-      width: 48px;
-      height: 48px;
-      border: 3px solid rgba(255,255,255,0.2);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 16px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    
-    .loading-text {
-      font-size: 16px;
-      opacity: 0.9;
-    }
-    .loading-percent {
-      font-size: 14px;
-      opacity: 0.6;
-      margin-top: 8px;
-    }
+    html, body { overflow: hidden; width: 100%; height: 100%; }
     
     #back-btn {
       position: fixed;
@@ -67,13 +16,12 @@
       height: 48px;
       background: rgba(0,0,0,0.5);
       backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
       border-radius: 50%;
       border: 1px solid rgba(255,255,255,0.2);
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 1001;
+      z-index: 999;
       cursor: pointer;
     }
     
@@ -85,7 +33,6 @@
       padding: 12px 20px;
       background: rgba(0,0,0,0.7);
       backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
       border-radius: 24px;
       display: flex;
       align-items: center;
@@ -94,29 +41,14 @@
       font-family: -apple-system, sans-serif;
     }
     #status.found { background: rgba(34,197,94,0.9); }
-    #status .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #fbbf24;
-    }
+    #status .dot { width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; }
     #status.found .dot { background: #fff; }
     #status span { color: #fff; font-size: 14px; }
     
-    /* Hide A-Frame VR UI */
     .a-enter-vr, .a-enter-ar { display: none !important; }
   </style>
 </head>
 <body>
-  <!-- Loading screen shown immediately -->
-  <div id="loading-screen">
-    <div class="loading-content">
-      <div class="spinner"></div>
-      <div class="loading-text">Cargando experiencia AR...</div>
-      <div class="loading-percent" id="loading-percent">Preparando...</div>
-    </div>
-  </div>
-  
   <button id="back-btn" onclick="history.back()">
     <svg width="24" height="24" fill="none" stroke="#fff" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -124,206 +56,123 @@
   </button>
   <div id="status">
     <div class="dot"></div>
-    <span>Buscando imagen...</span>
+    <span id="status-text">Cargando...</span>
   </div>
+
   <script>
-    const loadingPercent = document.getElementById('loading-percent');
-    const loadingScreen = document.getElementById('loading-screen');
-    
-    let scriptsLoaded = false;
-    let dataLoaded = false;
-    let postcard = null;
-    let videoUrl = null;
-    let targetUrl = null;
-    let planeWidth = 1;
-    let planeHeight = 0.5625;
-    
-    
-    // Load scripts dynamically
-    function loadScript(src) {
-      return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    }
-    
-    async function loadScripts() {
-      const startTime = Date.now();
-      
-      loadingPercent.textContent = 'Cargando A-Frame...';
-      await loadScript('https://aframe.io/releases/1.5.0/aframe.min.js');
-      console.log('⏱️ A-Frame loaded in', Date.now() - startTime, 'ms');
-      
-      loadingPercent.textContent = 'Cargando MindAR...';
-      await loadScript('https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js');
-      console.log('⏱️ MindAR loaded in', Date.now() - startTime, 'ms');
-      
-      // Register components after scripts load
-      registerComponents();
-      scriptsLoaded = true;
-      loadingPercent.textContent = 'Preparando AR...';
-      
-      checkReady();
-    }
-    
-    // Fetch postcard data
-    async function loadData() {
-      const startTime = Date.now();
+    // Custom components
+    AFRAME.registerComponent('video-texture', {
+      schema: { src: { type: 'selector' } },
+      init: function() {
+        this.video = this.data.src;
+        this.dimensionsSet = false;
+        if (this.video) {
+          this.texture = new THREE.VideoTexture(this.video);
+          this.texture.minFilter = THREE.LinearFilter;
+          this.texture.magFilter = THREE.LinearFilter;
+          const mesh = this.el.getObject3D('mesh');
+          if (mesh) {
+            mesh.material = new THREE.MeshBasicMaterial({ map: this.texture, side: THREE.DoubleSide });
+          }
+        }
+      },
+      tick: function() {
+        if (this.texture && this.video?.readyState >= 2) {
+          this.texture.needsUpdate = true;
+          if (!this.dimensionsSet && this.video.videoWidth > 0) {
+            this.dimensionsSet = true;
+            const ar = this.video.videoWidth / this.video.videoHeight;
+            const w = ar >= 1 ? 1 : ar;
+            const h = ar >= 1 ? 1/ar : 1;
+            this.el.setAttribute('width', w);
+            this.el.setAttribute('height', h);
+            console.log('📐 Plane:', w, 'x', h);
+          }
+        }
+      }
+    });
+
+    AFRAME.registerComponent('target-handler', {
+      init: function() {
+        const video = document.querySelector('#vid');
+        const status = document.querySelector('#status');
+        const statusText = document.querySelector('#status-text');
+        
+        this.el.addEventListener('targetFound', () => {
+          console.log('Target found!');
+          status?.classList.add('found');
+          if (statusText) statusText.textContent = '¡Imagen detectada!';
+          if (video) {
+            video.currentTime = 0;
+            video.muted = true;
+            video.play().then(() => video.muted = false).catch(() => video.play());
+          }
+        });
+        
+        this.el.addEventListener('targetLost', () => {
+          console.log('Target lost');
+          status?.classList.remove('found');
+          if (statusText) statusText.textContent = 'Buscando imagen...';
+          if (video) video.pause();
+        });
+      }
+    });
+
+    // Initialize
+    async function init() {
+      const statusText = document.querySelector('#status-text');
       const urlParams = new URLSearchParams(window.location.search);
       const postcardId = urlParams.get('id');
       
       if (!postcardId) {
-        throw new Error('No postcard ID');
+        statusText.textContent = 'Error: No ID';
+        return;
       }
-      
-      console.log('📡 Fetching postcard data...');
-      const response = await fetch('/api/postcards/' + postcardId);
-      console.log('📡 API responded in', Date.now() - startTime, 'ms');
-      const result = await response.json();
-      postcard = result.data;
-      
-      if (!postcard?.video_url) {
-        throw new Error('No video URL');
-      }
-      
-      videoUrl = postcard.video_url;
-      targetUrl = `/api/ar/mind-target/${postcard.user_id}/${postcard.id}`;
-      
-      // Don't wait for video metadata - use defaults and adjust later
-      console.log('📹 Data loaded, using default 16:9 dimensions');
-      
-      dataLoaded = true;
-      checkReady();
-    }
-    
-    function registerComponents() {
-      AFRAME.registerComponent('video-texture', {
-        schema: { src: { type: 'selector' } },
-        init: function() {
-          this.video = this.data.src;
-          this.dimensionsSet = false;
-          
-          if (this.video) {
-            this.texture = new THREE.VideoTexture(this.video);
-            this.texture.minFilter = THREE.LinearFilter;
-            this.texture.magFilter = THREE.LinearFilter;
-            const mesh = this.el.getObject3D('mesh');
-            if (mesh) {
-              mesh.material = new THREE.MeshBasicMaterial({
-                map: this.texture,
-                side: THREE.DoubleSide
-              });
-            }
-          }
-        },
-        tick: function() {
-          if (this.texture && this.video?.readyState >= 2) {
-            this.texture.needsUpdate = true;
-            
-            // Adjust plane dimensions once when video is ready
-            if (!this.dimensionsSet && this.video.videoWidth > 0) {
-              this.dimensionsSet = true;
-              const aspectRatio = this.video.videoWidth / this.video.videoHeight;
-              let w, h;
-              if (aspectRatio >= 1) {
-                w = 1; h = 1 / aspectRatio;
-              } else {
-                w = aspectRatio; h = 1;
-              }
-              this.el.setAttribute('width', w);
-              this.el.setAttribute('height', h);
-              console.log('📐 Adjusted plane to', w, 'x', h);
-            }
-          }
-        }
-      });
-
-      AFRAME.registerComponent('target-handler', {
-        init: function() {
-          this.video = document.querySelector('#vid');
-          const status = document.querySelector('#status');
-          const statusText = status?.querySelector('span');
-          
-          this.el.addEventListener('targetFound', () => {
-            console.log('Target found!');
-            if (status) status.classList.add('found');
-            if (statusText) statusText.textContent = '¡Imagen detectada!';
-            if (this.video) {
-              this.video.currentTime = 0;
-              this.video.muted = true;
-              this.video.play().then(() => {
-                this.video.muted = false;
-              }).catch(e => {
-                console.log('Play error:', e);
-                this.video.muted = true;
-                this.video.play();
-              });
-            }
-          });
-          this.el.addEventListener('targetLost', () => {
-            console.log('Target lost');
-            if (status) status.classList.remove('found');
-            if (statusText) statusText.textContent = 'Buscando imagen...';
-            if (this.video) this.video.pause();
-          });
-        }
-      });
-    }
-    
-    function checkReady() {
-      if (!scriptsLoaded || !dataLoaded) return;
-      
-      console.log('✅ All ready, creating AR scene');
-      
-      // Remove loading screen
-      loadingScreen.remove();
-      
-      // Create AR scene directly (A-Frame needs to be direct child of body)
-      const scene = document.createElement('a-scene');
-      scene.setAttribute('mindar-image', `imageTargetSrc: ${targetUrl}; autoStart: true;`);
-      scene.setAttribute('color-space', 'sRGB');
-      scene.setAttribute('renderer', 'colorManagement: true, physicallyCorrectLights');
-      scene.setAttribute('vr-mode-ui', 'enabled: false');
-      scene.setAttribute('device-orientation-permission-ui', 'enabled: false');
-      scene.setAttribute('embedded', '');
-      
-      scene.innerHTML = `
-        <a-assets>
-          <video id="vid" src="${videoUrl}" crossorigin="anonymous" loop muted playsinline></video>
-        </a-assets>
-        
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-        
-        <a-entity mindar-image-target="targetIndex: 0" target-handler>
-          <a-plane position="0 0 0" width="${planeWidth}" height="${planeHeight}" video-texture="src: #vid" material="shader: flat"></a-plane>
-        </a-entity>
-      `;
-      
-      document.body.appendChild(scene);
-      console.log('📷 A-Scene added to body');
-    }
-    
-    // Start everything in parallel
-    window.addEventListener('DOMContentLoaded', async () => {
-      const startTime = Date.now();
-      console.log('🚀 Starting parallel load...');
       
       try {
-        // Run scripts and data loading in parallel
-        await Promise.all([
-          loadScripts(),
-          loadData()
-        ]);
+        statusText.textContent = 'Cargando datos...';
+        const response = await fetch('/api/postcards/' + postcardId);
+        const result = await response.json();
+        const postcard = result.data;
         
-        console.log('⏱️ Total load time:', Date.now() - startTime, 'ms');
+        if (!postcard?.video_url) {
+          statusText.textContent = 'Error: No video';
+          return;
+        }
+        
+        const videoUrl = postcard.video_url;
+        const targetUrl = `/api/ar/mind-target/${postcard.user_id}/${postcard.id}`;
+        
+        statusText.textContent = 'Buscando imagen...';
+        
+        // Create scene
+        const scene = document.createElement('a-scene');
+        scene.setAttribute('mindar-image', `imageTargetSrc: ${targetUrl}; autoStart: true;`);
+        scene.setAttribute('color-space', 'sRGB');
+        scene.setAttribute('renderer', 'colorManagement: true, physicallyCorrectLights');
+        scene.setAttribute('vr-mode-ui', 'enabled: false');
+        scene.setAttribute('device-orientation-permission-ui', 'enabled: false');
+        
+        scene.innerHTML = `
+          <a-assets>
+            <video id="vid" src="${videoUrl}" crossorigin="anonymous" loop muted playsinline></video>
+          </a-assets>
+          <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+          <a-entity mindar-image-target="targetIndex: 0" target-handler>
+            <a-plane position="0 0 0" width="1" height="0.5625" video-texture="src: #vid" material="shader: flat"></a-plane>
+          </a-entity>
+        `;
+        
+        document.body.appendChild(scene);
+        console.log('✅ Scene created');
+        
       } catch (error) {
-        console.error('Load error:', error);
-        document.body.innerHTML = '<div style="color:white;padding:20px;">Error: ' + error.message + '</div>';
+        console.error('Error:', error);
+        statusText.textContent = 'Error: ' + error.message;
       }
-    });
+    }
+    
+    window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
