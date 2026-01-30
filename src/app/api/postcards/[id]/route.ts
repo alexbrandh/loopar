@@ -153,6 +153,7 @@ async function handleGetPostcard(
     }
     
     try {
+      console.log('📹 [API-GET] Generating signed URL for video:', { videoPath, postcardId });
       const { createSignedUrlWithRetry } = await import('@/lib/storage-utils');
       videoUrl = await createSignedUrlWithRetry(
         'postcard-videos',
@@ -165,7 +166,9 @@ async function handleGetPostcard(
         },
         3600
       );
+      console.log('✅ [API-GET] Video signed URL generated successfully');
     } catch (_err) {
+      console.error('❌ [API-GET] Failed to generate signed URL for video:', _err);
       logger.warn('Failed to generate signed URL for video', { postcardId }, _err instanceof Error ? _err : new Error(String(_err)));
       // If generation fails, just use the path stored in the database
       videoUrl = postcard.video_url || '';
