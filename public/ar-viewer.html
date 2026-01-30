@@ -102,6 +102,9 @@
     }
     #status.found .dot { background: #fff; }
     #status span { color: #fff; font-size: 14px; }
+    
+    /* Hide A-Frame VR UI */
+    .a-enter-vr, .a-enter-ar { display: none !important; }
   </style>
 </head>
 <body>
@@ -202,7 +205,7 @@
       videoUrl = postcard.video_url;
       targetUrl = `/api/ar/mind-target/${postcard.user_id}/${postcard.id}`;
       
-      // Get video dimensions
+      // Get video dimensions with timeout (don't block loading)
       await new Promise((resolve) => {
         const preloadVideo = document.createElement('video');
         preloadVideo.crossOrigin = 'anonymous';
@@ -210,7 +213,21 @@
         preloadVideo.playsInline = true;
         preloadVideo.preload = 'metadata';
         
+        let resolved = false;
+        const done = () => {
+          if (resolved) return;
+          resolved = true;
+          resolve();
+        };
+        
+        // Timeout after 3 seconds - use defaults
+        const timeout = setTimeout(() => {
+          console.log('⏱️ Video metadata timeout, using defaults');
+          done();
+        }, 3000);
+        
         preloadVideo.onloadedmetadata = () => {
+          clearTimeout(timeout);
           const aspectRatio = preloadVideo.videoWidth / preloadVideo.videoHeight;
           if (aspectRatio >= 1) {
             planeWidth = 1;
@@ -220,9 +237,12 @@
             planeHeight = 1;
           }
           console.log('📐 Video aspect ratio:', aspectRatio);
-          resolve();
+          done();
         };
-        preloadVideo.onerror = () => resolve(); // Use defaults
+        preloadVideo.onerror = () => {
+          clearTimeout(timeout);
+          done();
+        };
         preloadVideo.src = videoUrl;
       });
       
