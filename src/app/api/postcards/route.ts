@@ -380,7 +380,6 @@ async function handleCreatePostcardWithAuth(
 
 export const POST = compose(
   withErrorHandling,
-  withTimeout(60000),
   withMethodValidation(['POST'])
 )(withAuth(async (request: NextRequest, userId: string) => {
   const timer = createTimer('POST /api/postcards');
