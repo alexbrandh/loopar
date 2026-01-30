@@ -135,9 +135,22 @@ async function handleGetPostcard(
   // Generate signed URL for video
   if (postcard.video_url || true) { // Always try to generate for existing postcards
     // Use existing video_url as path if it's a storage path (not a signed URL)
-    let videoPath = postcard.video_url && !postcard.video_url.includes('supabase.co') 
-      ? postcard.video_url 
-      : `${postcard.user_id}/${postcard.id}/video.mp4`;
+    // The video_url should contain the full path with correct extension (e.g., video.mp4, video.mov)
+    let videoPath = postcard.video_url;
+    
+    // If video_url is a signed URL, extract the path
+    if (videoPath && videoPath.includes('supabase.co')) {
+      // Extract path from signed URL: .../postcard-videos/user_id/postcard_id/video.ext?token=...
+      const match = videoPath.match(/postcard-videos\/([^?]+)/);
+      if (match) {
+        videoPath = match[1];
+      }
+    }
+    
+    // Fallback: try common extensions if path is not set
+    if (!videoPath) {
+      videoPath = `${postcard.user_id}/${postcard.id}/video.mp4`;
+    }
     
     try {
       const { createSignedUrlWithRetry } = await import('@/lib/storage-utils');
