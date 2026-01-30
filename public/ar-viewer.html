@@ -138,10 +138,23 @@
         const result = await response.json();
         const postcard = result.data;
 
+        console.log('📹 Postcard data:', postcard);
+        console.log('📹 Video URL:', postcard?.video_url);
+        
         if (!postcard?.video_url) {
           document.body.innerHTML = '<div style="color:white;padding:20px;">Error: No video</div>';
           return;
         }
+
+        // Ensure video URL is absolute
+        let videoUrl = postcard.video_url;
+        if (!videoUrl.startsWith('http')) {
+          console.error('❌ Video URL is not absolute:', videoUrl);
+          document.body.innerHTML = '<div style="color:white;padding:20px;">Error: Invalid video URL</div>';
+          return;
+        }
+        
+        console.log('✅ Using video URL:', videoUrl);
 
         const targetUrl = `/api/ar/mind-target/${postcard.user_id}/${postcard.id}`;
 
@@ -154,7 +167,7 @@
             device-orientation-permission-ui="enabled: false"
           >
             <a-assets>
-              <video id="vid" src="${postcard.video_url}" crossorigin="anonymous" loop muted playsinline></video>
+              <video id="vid" src="${videoUrl}" crossorigin="anonymous" loop muted playsinline></video>
             </a-assets>
             
             <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
