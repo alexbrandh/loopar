@@ -513,7 +513,15 @@ export async function validatePostcardAccess(
 
     const supabase = createServerClient();
     
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as unknown as {
+      from: (table: string) => {
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            single: () => Promise<{ data: { id: string; user_id: string } | null; error: Error | null }>;
+          };
+        };
+      };
+    })
       .from('postcards')
       .select('id, user_id')
       .eq('id', postcardId)

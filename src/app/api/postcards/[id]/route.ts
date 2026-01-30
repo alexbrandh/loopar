@@ -9,6 +9,9 @@ import {
 import { handleError, createDetailedError, logError, type ErrorContext } from '@/lib/error-handler';
 import { validateUUID, validatePostcardAccess } from '@/lib/validation';
 import { logger, createTimer, logApiStart, logApiEnd } from '@/lib/logger';
+import type { Database } from '@/types/database';
+
+type PostcardRow = Database['public']['Tables']['postcards']['Row'];
 
 interface PostcardResponse {
   id: string;
@@ -18,7 +21,6 @@ interface PostcardResponse {
   title?: string;
   description?: string;
   nft_descriptors?: {
-    descriptorUrl?: string;
     generated?: boolean;
     timestamp?: string;
     files?: {
@@ -66,7 +68,7 @@ async function handleGetPostcard(
     .from('postcards')
     .select('*')
     .eq('id', postcardId)
-    .single();
+    .single() as { data: PostcardRow | null; error: { code?: string; message: string } | null };
 
   if (error || !postcard) {
     if (error?.code === 'PGRST116') {
@@ -100,41 +102,148 @@ async function handleGetPostcard(
     );
   }
 
-  // Use stored URLs directly; signing requires storage paths not available in current schema
-  logger.debug('Using stored URLs for postcard assets', { postcardId });
+  // Generate signed URLs dynamically for image and video
+  logger.debug('Generating signed URLs for postcard assets', { postcardId });
+  
+  let imageUrl = '';
+  let videoUrl = '';
+  
+  // Generate signed URL for image
+  if (postcard.image_url || true) { // Always try to generate for existing postcards
+    // Extract just the path from the existing URL if it's already a signed URL
+    let imagePath = `${postcard.user_id}/${postcard.id}/image.JPG`; // Use JPG extension
+    
+    try {
+      const { createSignedUrlWithRetry } = await import('@/lib/storage-utils');
+      imageUrl = await createSignedUrlWithRetry(
+        'postcard-images',
+        imagePath,
+        {
+          operation: `GET /api/postcards/${postcardId}`,
+          timestamp: new Date().toISOString(),
+          postcardId,
+          userId: postcard.user_id
+        },
+        3600
+      );
+    } catch (_err) {
+      logger.warn('Failed to generate signed URL for image', { postcardId }, _err instanceof Error ? _err : new Error(String(_err)));
+      imageUrl = postcard.image_url || '';
+    }
+  }
+  
+  // Generate signed URL for video
+  if (postcard.video_url || true) { // Always try to generate for existing postcards
+    // Use existing video_url as path if it's a storage path (not a signed URL)
+    let videoPath = postcard.video_url && !postcard.video_url.includes('supabase.co') 
+      ? postcard.video_url 
+      : `${postcard.user_id}/${postcard.id}/video.mp4`;
+    
+    try {
+      const { createSignedUrlWithRetry } = await import('@/lib/storage-utils');
+      videoUrl = await createSignedUrlWithRetry(
+        'postcard-videos',
+        videoPath,
+        {
+          operation: `GET /api/postcards/${postcardId}`,
+          timestamp: new Date().toISOString(),
+          postcardId,
+          userId: postcard.user_id
+        },
+        3600
+      );
+    } catch (_err) {
+      logger.warn('Failed to generate signed URL for video', { postcardId }, _err instanceof Error ? _err : new Error(String(_err)));
+      // If generation fails, just use the path stored in the database
+      videoUrl = postcard.video_url || '';
+    }
+  }
 
-  // Return full nft_descriptors object as stored in DB (includes files/metadata)
+  // Generate signed URLs for NFT descriptors
+  let nftDescriptors = postcard.nft_descriptors;
+  if (nftDescriptors && postcard.processing_status === 'ready') {
+    try {
+      const { createSignedUrlWithRetry } = await import('@/lib/storage-utils');
+      const basePath = `${postcard.user_id}/${postcard.id}/nft/descriptors`;
+      
+      // Generate signed URLs for each descriptor file
+      const descriptorFiles = {
+        iset: '',
+        fset: '',
+        fset3: ''
+      };
+      
+      // Generate signed URLs for each file type
+      for (const fileType of ['iset', 'fset', 'fset3']) {
+        const filePath = `${basePath}.${fileType}`;
+        try {
+          descriptorFiles[fileType as keyof typeof descriptorFiles] = await createSignedUrlWithRetry(
+            'postcards', // Using postcards bucket for NFT descriptors
+            filePath,
+            {
+              operation: `GET /api/postcards/${postcardId}`,
+              timestamp: new Date().toISOString(),
+              postcardId,
+              userId: postcard.user_id
+            },
+            3600
+          );
+        } catch (fileErr) {
+          logger.warn(`Failed to generate signed URL for ${fileType} descriptor`, { 
+            postcardId
+          }, fileErr instanceof Error ? fileErr : new Error(String(fileErr)));
+        }
+      }
+      
+      // Update nft_descriptors with signed URLs (only new format)
+      nftDescriptors = {
+        ...(typeof nftDescriptors === 'object' && nftDescriptors !== null && !Array.isArray(nftDescriptors) ? nftDescriptors : {}),
+        files: descriptorFiles
+        // Removed descriptorUrl to force use of new proxy format
+      };
+      
+      logger.debug('Generated signed URLs for NFT descriptors', { 
+        postcardId
+      });
+    } catch (err) {
+      logger.warn('Failed to generate signed URLs for NFT descriptors', { postcardId }, err instanceof Error ? err : new Error(String(err)));
+    }
+  }
+
   console.log('✅ [API-GET] Postcard fetched successfully:', {
     id: postcard.id,
     status: postcard.processing_status,
-    image_url: postcard.image_url,
-    video_url: postcard.video_url
+    image_url: imageUrl,
+    video_url: videoUrl,
+    nft_descriptors: nftDescriptors
   });
 
   return createApiResponse(
     true,
     {
       id: postcard.id,
+      user_id: postcard.user_id, // Include user_id for client-side path construction
       status: postcard.processing_status,
-      image_url: postcard.image_url,
-      video_url: postcard.video_url,
-      nft_descriptors: postcard.nft_descriptors,
+      image_url: imageUrl,
+      video_url: videoUrl,
+      nft_descriptors: nftDescriptors as PostcardResponse['nft_descriptors'],
       title: postcard.title,
-      description: postcard.description,
+      description: postcard.description || undefined,
       created_at: postcard.created_at
     }
   );
 }
 
-export async function GET(req: NextRequest, context: { params: Record<string, string> }) {
+export async function GET(req: NextRequest, context: { params: Promise<Record<string, string>> }) {
   const timer = createTimer('GET /api/postcards/[id]');
   const startTime = Date.now();
-  const postcardId = context.params.id;
+  const params = await context.params;
+  const postcardId = params.id;
   
   const errorContext: ErrorContext = {
-    operation: `GET /api/postcards/${context.params.id}`,
+    operation: `GET /api/postcards/${postcardId}`,
     timestamp: new Date().toISOString(),
-    postcardId: context.params.id,
+    postcardId: postcardId,
     userAgent: req.headers.get('user-agent') || undefined
   };
   
@@ -156,7 +265,7 @@ export async function GET(req: NextRequest, context: { params: Record<string, st
     }
     
     // Validate params
-    const validation = validateUUID(context.params.id, 'id');
+    const validation = validateUUID(postcardId, 'id');
     if (!validation.isValid) {
       const duration = timer();
       logApiEnd('GET', `/api/postcards/${postcardId}`, 400, duration, { postcardId });
@@ -173,7 +282,7 @@ export async function GET(req: NextRequest, context: { params: Record<string, st
     }
     
     logger.info('Fetching postcard', { postcardId });
-    const result = await handleGetPostcard(req, context.params, errorContext);
+    const result = await handleGetPostcard(req, params, errorContext);
     const duration = timer();
     
     logger.info('Postcard retrieved successfully', { 
@@ -184,16 +293,16 @@ export async function GET(req: NextRequest, context: { params: Record<string, st
     logApiEnd('GET', `/api/postcards/${postcardId}`, 200, duration, { postcardId });
     
     return result;
-  } catch (error) {
+  } catch (err) {
     const duration = Date.now() - startTime;
     
     logger.error('Failed to retrieve postcard', {
       postcardId,
       duration
-    }, error instanceof Error ? error : undefined);
+    }, err instanceof Error ? err : undefined);
     
     logApiEnd('GET', `/api/postcards/${postcardId}`, 500, duration, { postcardId });
-    const { response } = handleError(error, errorContext, 'INTERNAL_SERVER_ERROR');
+    const { response } = handleError(err, errorContext, 'INTERNAL_SERVER_ERROR');
     return response;
   }
 }
@@ -240,7 +349,7 @@ async function handleDeletePostcard(
     .select('*')
     .eq('id', params.id)
     .eq('user_id', userId)
-    .single();
+    .single() as { data: PostcardRow | null; error: { code?: string; message: string } | null };
 
   if (postcardError || !postcard) {
     if (postcardError?.code === 'PGRST116') {
@@ -354,15 +463,16 @@ async function handleDeletePostcard(
   );
 }
 
-export async function DELETE(req: NextRequest, context: { params: Record<string, string> }) {
+export async function DELETE(req: NextRequest, context: { params: Promise<Record<string, string>> }) {
   const timer = createTimer('DELETE /api/postcards/[id]');
   const startTime = Date.now();
-  const postcardId = context.params.id;
+  const params = await context.params;
+  const postcardId = params.id;
   
   const errorContext: ErrorContext = {
-    operation: `DELETE /api/postcards/${context.params.id}`,
+    operation: `DELETE /api/postcards/${postcardId}`,
     timestamp: new Date().toISOString(),
-    postcardId: context.params.id,
+    postcardId: postcardId,
     userAgent: req.headers.get('user-agent') || undefined
   };
   
@@ -384,7 +494,7 @@ export async function DELETE(req: NextRequest, context: { params: Record<string,
     }
     
     // Validate params
-    const validation = validateUUID(context.params.id, 'id');
+    const validation = validateUUID(postcardId, 'id');
     if (!validation.isValid) {
       const duration = timer();
       logApiEnd('DELETE', `/api/postcards/${postcardId}`, 400, duration, { postcardId });
@@ -422,7 +532,7 @@ export async function DELETE(req: NextRequest, context: { params: Record<string,
 
     logger.info('User authenticated for postcard deletion', { userId, postcardId });
     errorContext.userId = userId;
-    const result = await handleDeletePostcard(req, context.params, userId, errorContext);
+    const result = await handleDeletePostcard(req, params, userId, errorContext);
     const duration = timer();
     
     logger.info('Postcard deleted successfully', { 
@@ -437,18 +547,18 @@ export async function DELETE(req: NextRequest, context: { params: Record<string,
     });
     
     return result;
-  } catch (error) {
+  } catch (err) {
     const duration = Date.now() - startTime;
     
     logger.error('Error deleting postcard', { 
       userId: errorContext.userId || 'unknown',
       postcardId,
       duration,
-      metadata: { errorMessage: error instanceof Error ? error.message : 'Unknown error' }
-    }, error instanceof Error ? error : undefined);
+      metadata: { errorMessage: err instanceof Error ? err.message : 'Unknown error' }
+    }, err instanceof Error ? err : undefined);
     
     logApiEnd('DELETE', `/api/postcards/${postcardId}`, 500, duration, { postcardId });
-    const { response } = handleError(error, errorContext, 'INTERNAL_SERVER_ERROR');
+    const { response } = handleError(err, errorContext, 'INTERNAL_SERVER_ERROR');
     return response;
   }
 }

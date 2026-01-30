@@ -9,6 +9,7 @@ import { Postcard } from '@/types/database';
 import Link from 'next/link';
 import Image from 'next/image';
 import { toast } from 'sonner';
+import { isValidImageUrl, handleImageError } from '@/lib/url-utils';
 
 interface SharePostcardViewProps {
   postcard: Postcard;
@@ -92,12 +93,13 @@ export function SharePostcardView({ postcard }: SharePostcardViewProps) {
             {/* Imagen */}
             <div className="space-y-4">
               <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
-                {postcard.image_url && !imageError ? (
+                {postcard.image_url && isValidImageUrl(postcard.image_url) && !imageError ? (
                   <Image
                     src={postcard.image_url}
                     alt={postcard.title}
                     fill
                     className="object-cover"
+                    unoptimized={true} // ✅ Deshabilitando optimización para URLs firmadas de Supabase
                     onError={() => setImageError(true)}
                   />
                 ) : (

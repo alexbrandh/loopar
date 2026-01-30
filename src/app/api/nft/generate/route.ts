@@ -11,6 +11,9 @@ import {
 } from '@/lib/api-middleware';
 import { validatePostcardAccess, validateNFTDescriptors } from '@/lib/validation';
 
+// Extend the function timeout to 120 seconds for NFT generation
+export const maxDuration = 120;
+
 async function handleGenerateNFT(
   request: NextRequest
 ) {
@@ -176,10 +179,10 @@ async function handleGenerateNFT(
     );
   }
 
-  console.log('Generating NFT descriptors for postcard:', postcardId);
+  console.log('🚀 [API] Starting NFT generation for postcard:', postcardId);
 
   // Update status to processing
-  await supabase
+  const { error: updateProcessingError } = await supabase
     .from('postcards')
     .update({ 
       processing_status: 'processing',
@@ -187,12 +190,60 @@ async function handleGenerateNFT(
     })
     .eq('id', postcardId);
 
-  // Generate NFT descriptors
-  const result = await generateNFTDescriptors({
-    imageUrl: postcard.image_url,
-    postcardId,
-    userId
-  });
+  if (updateProcessingError) {
+    console.error('❌ [API] Failed to update processing status:', updateProcessingError);
+  }
+
+  // Ensure we have a full URL, not just a path
+  let imageUrl = postcard.image_url;
+  if (!imageUrl.startsWith('http')) {
+    console.log('📸 [API] Image URL is a path, generating signed URL...');
+    // The image_url is just a path, need to generate a signed URL
+    const { data: signedData, error: signError } = await supabase.storage
+      .from('postcard-images')
+      .createSignedUrl(imageUrl, 3600); // 1 hour
+    
+    if (signError || !signedData?.signedUrl) {
+      console.error('❌ [API] Failed to generate signed URL for image:', signError);
+      
+      // Update status to error
+      await supabase
+        .from('postcards')
+        .update({ 
+          processing_status: 'error',
+          error_message: 'Failed to access image',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', postcardId);
+      
+      return createApiResponse(
+        false,
+        undefined,
+        {
+          message: 'Failed to access image',
+          code: 'IMAGE_ACCESS_ERROR'
+        }
+      );
+    }
+    imageUrl = signedData.signedUrl;
+    console.log('✅ [API] Generated signed URL for image');
+  }
+
+  console.log('🔧 [API] Calling NFT descriptor generator...');
+  
+  // Generate NFT descriptors with try-catch for safety
+  let result;
+  try {
+    result = await generateNFTDescriptors({
+      imageUrl,
+      postcardId,
+      userId
+    });
+    console.log('📦 [API] NFT generator returned:', result ? 'SUCCESS' : 'NULL');
+  } catch (genError) {
+    console.error('❌ [API] NFT generation threw an error:', genError);
+    result = null;
+  }
 
   if (!result) {
     console.error('NFT generation failed');
@@ -243,6 +294,16 @@ async function handleGenerateNFT(
   }
 
   console.log('NFT descriptors generated successfully for postcard:', postcardId);
+
+  // ✅ CRITICAL: Update postcard status to 'ready' and save NFT descriptors
+  await supabase
+    .from('postcards')
+    .update({ 
+      processing_status: 'ready',
+      nft_descriptors: result,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', postcardId);
 
   return createApiResponse(
     true,

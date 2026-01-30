@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instrucciones de Prueba AR - Loopar</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2563eb;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .marker-image {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #dee2e6;
+        }
+        
+        .marker-image img {
+            max-width: 300px;
+            height: auto;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+        }
+        
+        .steps {
+            counter-reset: step-counter;
+        }
+        
+        .step {
+            counter-increment: step-counter;
+            margin: 20px 0;
+            padding: 15px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            border-radius: 4px;
+        }
+        
+        .step::before {
+            content: "Paso " counter(step-counter) ": ";
+            font-weight: bold;
+            color: #1976d2;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .warning::before {
+            content: "⚠️ ";
+            font-weight: bold;
+        }
+        
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .success::before {
+            content: "✅ ";
+            font-weight: bold;
+        }
+        
+        .button {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        
+        .button:hover {
+            background: #0056b3;
+        }
+        
+        .button.secondary {
+            background: #6c757d;
+        }
+        
+        .button.secondary:hover {
+            background: #545b62;
+        }
+        
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Prueba de Realidad Aumentada - Loopar</h1>
+        
+        <p>Esta página te ayudará a probar la funcionalidad de realidad aumentada de Loopar usando una imagen de marcador conocida.</p>
+        
+        <div class="marker-image">
+            <h3>📱 Imagen de Marcador de Prueba</h3>
+            <img src="/images/pinball-marker.jpg" alt="Imagen de marcador de pinball para AR" />
+            <p><strong>Guarda esta imagen en tu móvil o imprímela para usar como marcador AR</strong></p>
+        </div>
+        
+        <div class="steps">
+            <div class="step">
+                Guarda la imagen de arriba en tu dispositivo móvil o imprímela en papel.</div>
+            
+            <div class="step">
+                Abre la experiencia AR haciendo clic en uno de los botones de abajo.</div>
+            
+            <div class="step">
+                Permite el acceso a la cámara cuando se solicite.</div>
+            
+            <div class="step">
+                Apunta la cámara hacia la imagen de marcador que guardaste/imprimiste.</div>
+            
+            <div class="step">
+                Deberías ver un video reproduciéndose sobre la imagen cuando sea detectada.</div>
+        </div>
+        
+        <div class="warning">
+            <strong>Importante:</strong> Asegúrate de tener buena iluminación y mantener la imagen de marcador plana y completamente visible en la cámara.
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="/test-ar-simple.html" class="button">🧪 Prueba AR Simple</a>
+            <a href="/ar/test" class="button secondary">🎯 Experiencia AR Completa</a>
+        </div>
+        
+        <div class="success">
+            <strong>¿Qué esperar?</strong> Cuando la cámara detecte la imagen de marcador, deberías ver un video de Big Buck Bunny reproduciéndose sobre la imagen en realidad aumentada.
+        </div>
+        
+        <div class="debug-info">
+            <strong>Información de Debug:</strong><br>
+            • Imagen de marcador: /images/pinball-marker.jpg<br>
+            • Descriptores NFT: AR.js pinball (ejemplo oficial)<br>
+            • Video de prueba: Big Buck Bunny (Google Cloud)<br>
+            • Modo debug: Habilitado automáticamente en desarrollo<br>
+        </div>
+        
+        <h3>🔧 Solución de Problemas</h3>
+        <ul>
+            <li><strong>La cámara no se activa:</strong> Verifica permisos del navegador y usa HTTPS</li>
+            <li><strong>No detecta la imagen:</strong> Mejora la iluminación y mantén la imagen plana</li>
+            <li><strong>El video no se reproduce:</strong> Toca la pantalla para activar la reproducción</li>
+            <li><strong>Errores en consola:</strong> Abre las herramientas de desarrollador (F12) para ver logs detallados</li>
+        </ul>
+    </div>
+</body>
+</html>

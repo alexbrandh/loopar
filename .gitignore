@@ -42,3 +42,4 @@ supabase/.temp/
 # logs
 logs
 *.log
+.vercel

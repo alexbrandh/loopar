@@ -1,7 +1,0 @@
-== CHECK static icons on :3000 ==
-[HEAD] http://localhost:3000/icons/test512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
-[GET]  http://localhost:3000/icons/test512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
-[HEAD] http://localhost:3000/icons/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
-[GET]  http://localhost:3000/icons/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
-[HEAD] http://localhost:3000/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).
-[GET]  http://localhost:3000/icon-512.png -> ERROR Response status code does not indicate success: 500 (Internal Server Error).

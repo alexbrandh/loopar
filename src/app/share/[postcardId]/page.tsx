@@ -5,19 +5,20 @@ import { SharePostcardView } from '@/components/SharePostcardView';
 import { Postcard } from '@/types/database';
 
 interface SharePageProps {
-  params: {
+  params: Promise<{
     postcardId: string;
-  };
+  }>;
 }
 
 export async function generateMetadata({ params }: SharePageProps): Promise<Metadata> {
-  const supabase = createClient();
+  const supabase = await createClient();
+  const resolvedParams = await params;
   
   try {
     const { data: postcard } = await supabase
       .from('postcards')
       .select('title, image_url')
-      .eq('id', params.postcardId)
+      .eq('id', resolvedParams.postcardId)
       .single();
 
     if (!postcard) {
@@ -53,7 +54,8 @@ export async function generateMetadata({ params }: SharePageProps): Promise<Meta
 }
 
 export default async function SharePage({ params }: SharePageProps) {
-  const supabase = createClient();
+  const supabase = await createClient();
+  const resolvedParams = await params;
   
   try {
     // Obtener la postcard (solo las públicas o las que tienen processing_status = 'ready')
@@ -69,7 +71,7 @@ export default async function SharePage({ params }: SharePageProps) {
         created_at,
         updated_at
       `)
-      .eq('id', params.postcardId)
+      .eq('id', resolvedParams.postcardId)
       .eq('processing_status', 'ready')
       .single();
 

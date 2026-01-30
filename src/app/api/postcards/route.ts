@@ -3,18 +3,20 @@ import { createServerClient } from '@/lib/supabase';
 import { handleError, createDetailedError, logError, type ErrorContext } from '@/lib/error-handler';
 import { validatePostcardData } from '@/lib/validation';
 import { z } from 'zod';
-import { 
-  createApiResponse, 
+import {
+  createApiResponse,
   createValidationErrorResponse,
-  withErrorHandling, 
-  withAuth, 
+  withErrorHandling,
+  withAuth,
   withMethodValidation,
   withTimeout,
   compose,
-  type ApiResponse 
+  type ApiResponse
 } from '@/lib/api-middleware';
 import { createSignedUploadUrlWithRetry, createSignedUrlWithRetry } from '@/lib/storage-utils';
-import type { Postcard } from '@/types/database';
+import type { Postcard, Database } from '@/types/database';
+
+type PostcardRow = Database['public']['Tables']['postcards']['Row'];
 import { logger, createTimer, logApiStart, logApiEnd } from '@/lib/logger';
 
 const createPostcardSchema = z.object({
@@ -44,7 +46,7 @@ async function handleCreatePostcard(
   console.log('📥 [API-POST] Create postcard request received');
   console.log('👤 [API-POST] User ID from auth:', userId);
   console.log('📥 [API-POST] Request body:', JSON.stringify(body, null, 2));
-  
+
   const validatedData = body; // Body is already validated by middleware
 
   // Validate postcard data
@@ -53,7 +55,7 @@ async function handleCreatePostcard(
     note: validatedData.description,
     userId
   });
-  
+
   if (!postcardValidation.isValid) {
     // Log detailed validation errors and return a structured 400 response
     console.error('❌ [API-POST] Postcard validation failed', {
@@ -95,9 +97,15 @@ async function handleCreatePostcard(
 
   // Create postcard record
   logger.database('insert', 'postcards', { userId, metadata: { title: validatedData.title } });
-  
-  const { data: postcard, error: insertError } = await supabase
-    .from('postcards')
+
+  const { data: postcard, error: insertError } = await (supabase
+    .from('postcards') as unknown as {
+      insert: (data: Record<string, unknown>) => {
+        select: () => {
+          single: () => Promise<{ data: PostcardRow | null; error: { code?: string; message: string } | null }>
+        }
+      }
+    })
     .insert({
       user_id: userId,
       title: validatedData.title,
@@ -125,9 +133,9 @@ async function handleCreatePostcard(
       }
     ) as unknown as NextResponse<ApiResponse<CreatePostcardResponse>>;
   }
-  
+
   logger.info('Postcard record created successfully', {
-    userId, 
+    userId,
     postcardId: postcard.id,
     metadata: { processing_status: postcard.processing_status }
   });
@@ -148,15 +156,15 @@ async function handleCreatePostcard(
   });
 
   // Generate signed upload URLs with retry logic
-  logger.storage('create_upload_url', 'postcard-images', imageKey, { 
-    userId, 
-    postcardId: postcard.id 
+  logger.storage('create_upload_url', 'postcard-images', imageKey, {
+    userId,
+    postcardId: postcard.id
   });
-  logger.storage('create_upload_url', 'postcard-videos', videoKey, { 
-    userId, 
-    postcardId: postcard.id 
+  logger.storage('create_upload_url', 'postcard-videos', videoKey, {
+    userId,
+    postcardId: postcard.id
   });
-  
+
   let imageUploadData = null;
   let videoUploadData = null;
   let imageUploadError = null;
@@ -183,10 +191,10 @@ async function handleCreatePostcard(
 
   if (imageUploadError || videoUploadError) {
     console.error('❌ [API-POST] Error creating signed URLs:', { imageUploadError, videoUploadError });
-    
+
     // Clean up the created postcard
     await supabase.from('postcards').delete().eq('id', postcard.id);
-    
+
     return createApiResponse(
       false,
       undefined,
@@ -211,22 +219,28 @@ async function handleCreatePostcard(
     const imageSignedUrl = imageSignedResult;
     const videoSignedUrl = videoSignedResult;
 
-    imageUrl = imageSignedUrl || '';
-    videoUrl = videoSignedUrl || '';
+    imageUrl = imageSignedUrl || imageKey;
+    videoUrl = videoSignedUrl || videoKey;
   } catch (err) {
-    logger.warn('Signed GET URL not available yet; proceeding without pre-signed access URLs', {
+    logger.warn('Signed GET URL not available yet; saving storage key instead', {
       userId,
       postcardId: postcard.id,
       metadata: {
         error: err instanceof Error ? err.message : String(err)
       }
     });
-    // imageUrl/videoUrl remain empty; GET handlers will sign on demand later
+    // Fallback to storage keys so we don't lose the reference
+    imageUrl = imageKey;
+    videoUrl = videoKey;
   }
 
   // Update postcard with URLs
-  const { error: updateError } = await supabase
-    .from('postcards')
+  const { error: updateError } = await (supabase
+    .from('postcards') as unknown as {
+      update: (data: Record<string, unknown>) => {
+        eq: (column: string, value: unknown) => Promise<{ error: { code?: string; message: string } | null }>
+      }
+    })
     .update({
       image_url: imageUrl,
       video_url: videoUrl,
@@ -253,9 +267,9 @@ async function handleCreatePostcard(
   }
 
   console.log('✅ [API-POST] Postcard created and URLs updated successfully');
-  
-  logger.info('Upload URLs generated successfully', { 
-    userId, 
+
+  logger.info('Upload URLs generated successfully', {
+    userId,
     postcardId: postcard.id,
     metadata: {
       hasImageUrl: !!imageUploadData?.signedUrl,
@@ -310,21 +324,21 @@ async function handleCreatePostcardWithAuth(
     userId,
     userAgent: request.headers.get('user-agent') || undefined
   };
-  
+
   try {
     const body = await request.json();
     console.log('📥 [API-POST] Create postcard request received');
     console.log('👤 [API-POST] User ID from auth:', userId);
     console.log('📥 [API-POST] Request body:', JSON.stringify(body, null, 2));
-    
+
     // Validate body with Zod
     const validation = validateWithZod(createPostcardSchema)(body);
     if (!validation.isValid) {
       return createValidationErrorResponse(validation) as unknown as NextResponse<ApiResponse<CreatePostcardResponse>>;
     }
-    
+
     const validatedData = body as CreatePostcardRequest;
-    
+
     return await handleCreatePostcard(request, validatedData, userId, context);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -344,7 +358,7 @@ async function handleCreatePostcardWithAuth(
         }
       ) as unknown as NextResponse<ApiResponse<CreatePostcardResponse>>;
     }
-    
+
     const { response } = handleError(error, context, 'INTERNAL_SERVER_ERROR');
     return response as unknown as NextResponse<ApiResponse<CreatePostcardResponse>>;
   }
@@ -357,34 +371,34 @@ export const POST = compose(
 )(withAuth(async (request: NextRequest, userId: string) => {
   const timer = createTimer('POST /api/postcards');
   const startTime = Date.now();
-  
+
   try {
     logApiStart('POST', '/api/postcards');
     logger.info('User authenticated for postcard creation', { userId });
-    
+
     const result = await handleCreatePostcardWithAuth(request, userId);
     const duration = timer();
-    
-    logger.info('Postcard creation completed', { 
-      userId, 
-      duration 
+
+    logger.info('Postcard creation completed', {
+      userId,
+      duration
     });
-    
-    logApiEnd('POST', '/api/postcards', 201, duration, { 
+
+    logApiEnd('POST', '/api/postcards', 201, duration, {
       userId
     });
-    
+
     return result;
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('Error in POST /api/postcards', {
       duration,
       metadata: {
         errorMessage: error instanceof Error ? error.message : 'Unknown error'
       }
     }, error instanceof Error ? error : undefined);
-    
+
     logApiEnd('POST', '/api/postcards', 500, duration);
     throw error;
   }
@@ -397,13 +411,19 @@ async function handleGetPostcards(
   logger.debug('Starting postcards retrieval', { userId });
   console.log('📥 [API-GET] Fetching postcards request received');
   console.log('👤 [API-GET] Fetching postcards for user:', userId);
-  
+
   const supabase = createServerClient();
 
   logger.database('select', 'postcards', { userId });
-  
-  const { data: postcards, error } = await supabase
-    .from('postcards')
+
+  const { data: postcards, error } = await (supabase
+    .from('postcards') as unknown as {
+      select: (columns: string) => {
+        eq: (column: string, value: unknown) => {
+          order: (column: string, options: { ascending: boolean }) => Promise<{ data: PostcardRow[] | null; error: { code?: string; message: string } | null }>
+        }
+      }
+    })
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
@@ -426,7 +446,7 @@ async function handleGetPostcards(
       }
     );
   }
-  
+
   logger.info('Postcards fetched from database', {
     userId,
     metadata: {
@@ -452,43 +472,82 @@ async function handleGetPostcards(
 
       if (postcard.image_url) {
         // Extract path from existing URL or use direct path
-        const imagePath = postcard.image_url.includes('/postcard-images/') 
-          ? postcard.image_url.split('/postcard-images/')[1]
-          : `${postcard.user_id}/${postcard.id}/image.jpg`;
-        
+        let imagePath = postcard.image_url;
+        if (postcard.image_url.includes('/postcard-images/')) {
+          imagePath = postcard.image_url.split('/postcard-images/')[1];
+        } else if (postcard.image_url.includes('?')) {
+          // Handle case where it might be a signed URL but we want to re-sign or extract path
+          // But if it's a raw key like "user/id/image.jpg", it won't have ?
+          // If it's a full URL, we might need to be careful. 
+          // For now, assume if it doesn't have /postcard-images/, it IS the path (from our new fallback)
+        }
+
         if (imagePath) {
-          const imageSignedUrl = await createSignedUrlWithRetry(
-            'postcard-images', 
-            imagePath, 
-            {
-              operation: 'GET /api/postcards',
-              timestamp: new Date().toISOString(),
-              userId
-            },
-            3600
-          );
-          imageUrl = imageSignedUrl || postcard.image_url;
+          try {
+            // Remove any query parameters if present
+            imagePath = imagePath.split('?')[0];
+
+            const imageSignedUrl = await createSignedUrlWithRetry(
+              'postcard-images',
+              imagePath,
+              {
+                operation: 'GET /api/postcards',
+                timestamp: new Date().toISOString(),
+                userId
+              },
+              3600
+            );
+            imageUrl = imageSignedUrl || postcard.image_url;
+          } catch (error) {
+            // If file doesn't exist, keep original URL or empty string
+            logger.warn('Image file not found in storage', {
+              userId,
+              postcardId: postcard.id,
+              metadata: {
+                imagePath,
+                error: error instanceof Error ? error.message : String(error)
+              }
+            });
+            imageUrl = postcard.image_url || '';
+          }
         }
       }
 
       if (postcard.video_url) {
         // Extract path from existing URL or use direct path
-        const videoPath = postcard.video_url.includes('/postcard-videos/') 
-          ? postcard.video_url.split('/postcard-videos/')[1]
-          : `${postcard.user_id}/${postcard.id}/video.mp4`;
-        
+        let videoPath = postcard.video_url;
+        if (postcard.video_url.includes('/postcard-videos/')) {
+          videoPath = postcard.video_url.split('/postcard-videos/')[1];
+        }
+
         if (videoPath) {
-          const videoSignedUrl = await createSignedUrlWithRetry(
-            'postcard-videos', 
-            videoPath, 
-            {
-              operation: 'GET /api/postcards',
-              timestamp: new Date().toISOString(),
-              userId
-            },
-            3600
-          );
-          videoUrl = videoSignedUrl || postcard.video_url;
+          try {
+            // Remove any query parameters if present
+            videoPath = videoPath.split('?')[0];
+
+            const videoSignedUrl = await createSignedUrlWithRetry(
+              'postcard-videos',
+              videoPath,
+              {
+                operation: 'GET /api/postcards',
+                timestamp: new Date().toISOString(),
+                userId
+              },
+              3600
+            );
+            videoUrl = videoSignedUrl || postcard.video_url;
+          } catch (error) {
+            // If file doesn't exist, keep original URL or empty string
+            logger.warn('Video file not found in storage', {
+              userId,
+              postcardId: postcard.id,
+              metadata: {
+                videoPath,
+                error: error instanceof Error ? error.message : String(error)
+              }
+            });
+            videoUrl = postcard.video_url || '';
+          }
         }
       }
 
@@ -512,34 +571,34 @@ export const GET = compose(
 )(withAuth(async (request: NextRequest, userId: string) => {
   const timer = createTimer('GET /api/postcards');
   const startTime = Date.now();
-  
+
   try {
     logApiStart('GET', '/api/postcards');
     logger.info('User authenticated for postcards retrieval', { userId });
-    
+
     const result = await handleGetPostcards(request, userId);
     const duration = timer();
-    
-    logger.info('Postcards retrieved successfully', { 
-      userId, 
-      duration 
+
+    logger.info('Postcards retrieved successfully', {
+      userId,
+      duration
     });
-    
-    logApiEnd('GET', '/api/postcards', 200, duration, { 
+
+    logApiEnd('GET', '/api/postcards', 200, duration, {
       userId
     });
-    
+
     return result;
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     logger.error('Error fetching postcards', {
       duration,
       metadata: {
         errorMessage: error instanceof Error ? error.message : 'Unknown error'
       }
     }, error instanceof Error ? error : undefined);
-    
+
     logApiEnd('GET', '/api/postcards', 500, duration);
     throw error;
   }

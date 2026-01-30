@@ -1,0 +1,8 @@
+[file] tailwind.config.ts
+[file] eslint.config.js
+[file] vercel.json
+[dir] src\styles
+[dir] src\app\icon-512.png
+[file] tsconfig.tsbuildinfo
+[dir] logs
+[dir] ar-postcard-app

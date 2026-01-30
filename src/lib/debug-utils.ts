@@ -49,7 +49,7 @@ class DebugStorage {
     if (this.errors.length > this.maxErrors) {
       this.errors = this.errors.slice(0, this.maxErrors);
     }
-    logger.error('Network error recorded:', error);
+    // Logging removed for performance - was causing excessive console output
   }
 
   addRequest(request: RequestMetrics) {
@@ -218,11 +218,7 @@ export function startRequestMonitoring(
   };
   
   debugStorage.addRequest(request);
-  logger.info('Request started', {
-    operation: 'request_monitoring',
-    metadata: { requestId, url, method }
-  });
-
+  // Logging removed for performance
   return requestId;
 }
 
@@ -241,28 +237,14 @@ export function endRequestMonitoring(
     errorType
   });
   
-  const request = debugStorage.getRequests().find(r => r.id === requestId);
-  if (request) {
-    logger.info('Request completed', {
-      operation: 'request_monitoring',
-      metadata: {
-        requestId,
-        status,
-        duration: request.duration,
-        statusCode
-      }
-    });
-  }
+  // Logging removed for performance
 }
 
 export function incrementRetryCount(requestId: string) {
   const request = debugStorage.getRequests().find(r => r.id === requestId);
   if (request) {
     request.retryCount++;
-    logger.info('Request retry', {
-      operation: 'request_monitoring',
-      metadata: { requestId, retryCount: request.retryCount }
-    });
+    // Logging removed for performance
   }
 }
 

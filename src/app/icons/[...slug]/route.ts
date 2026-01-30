@@ -1,6 +1,7 @@
+/// <reference types="node" />
 import { NextResponse } from 'next/server'
 import path from 'path'
-import { promises as fs } from 'fs'
+import fs from 'fs/promises'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -36,8 +37,9 @@ async function readIconFile(relPath: string): Promise<{ data: Buffer; ct: string
   }
 }
 
-export async function GET(_req: Request, ctx: { params: { slug?: string[] } }) {
-  const slugArr = ctx.params?.slug ?? []
+export async function GET(_req: Request, ctx: { params: Promise<{ slug?: string[] }> }) {
+  const params = await ctx.params;
+  const slugArr = params?.slug ?? []
   const rel = slugArr.join('/')
   const file = await readIconFile(rel)
 
@@ -54,7 +56,7 @@ export async function GET(_req: Request, ctx: { params: { slug?: string[] } }) {
           'Cache-Control': 'public, max-age=31536000, immutable',
         },
       })
-    } catch {}
+    } catch { }
   }
 
   if (!file) return NextResponse.json({ error: 'Not Found' }, { status: 404 })
@@ -69,9 +71,10 @@ export async function GET(_req: Request, ctx: { params: { slug?: string[] } }) {
   })
 }
 
-export async function HEAD(req: Request, ctx: { params: { slug?: string[] } }) {
+export async function HEAD(req: Request, ctx: { params: Promise<{ slug?: string[] }> }) {
   try {
-    const slugArr = ctx.params?.slug ?? []
+    const params = await ctx.params;
+    const slugArr = params?.slug ?? []
     const rel = slugArr.join('/')
     const baseDir = path.join(process.cwd(), 'public', 'icons')
     const safeRel = rel.replace(/\\/g, '/').replace(/^\/+/, '')
@@ -79,11 +82,11 @@ export async function HEAD(req: Request, ctx: { params: { slug?: string[] } }) {
     const normalized = path.normalize(full)
     let p: string | null = null
     if (normalized.startsWith(baseDir)) {
-      try { await fs.access(normalized); p = normalized } catch {}
+      try { await fs.access(normalized); p = normalized } catch { }
     }
     if (!p && /(^|\/)icon-512\.png$/i.test(rel)) {
       const p192 = path.join(process.cwd(), 'public', 'icon-192.png')
-      try { await fs.access(p192); p = p192 } catch {}
+      try { await fs.access(p192); p = p192 } catch { }
     }
     if (!p) {
       return new Response(null, { status: 404 })

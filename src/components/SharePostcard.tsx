@@ -106,7 +106,12 @@ export function SharePostcard({ postcardId, title, className }: SharePostcardPro
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className={className}>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className={className}
+          onClick={(e) => e.stopPropagation()}
+        >
           <Share2 className="h-4 w-4 mr-2" />
           Compartir
         </Button>

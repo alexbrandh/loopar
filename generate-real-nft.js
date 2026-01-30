@@ -1,274 +1,251 @@
+/**
+ * Generador de NFT reales usando @webarkit/nft-marker-creator-app
+ */
+
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
-const { spawn } = require('child_process');
+const { exec } = require('child_process');
+const { promisify } = require('util');
 
-// Read environment variables from .env.local
-let supabaseUrl, supabaseServiceKey;
-try {
-  const envPath = path.join(__dirname, '.env.local');
-  const envContent = fs.readFileSync(envPath, 'utf8');
-  const envLines = envContent.split('\n');
-  
-  for (const line of envLines) {
-    if (line.startsWith('NEXT_PUBLIC_SUPABASE_URL=')) {
-      supabaseUrl = line.split('=')[1].trim();
-    }
-    if (line.startsWith('SUPABASE_SERVICE_ROLE_KEY=')) {
-      supabaseServiceKey = line.split('=')[1].trim();
-    }
-  }
-} catch (error) {
-  console.error('Error reading .env.local:', error.message);
-}
+const execAsync = promisify(exec);
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing Supabase environment variables');
-  process.exit(1);
-}
+// Supabase configuration
+const supabaseUrl = 'https://qllfquoqrxvfgdudnrrr.supabase.co';
+const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsbGZxdW9xcnh2ZmdkdWRucnJyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTIyNjg5NywiZXhwIjoyMDcwODAyODk3fQ.gPqdTeE35i23COXrwFce3V5ctYku2ABSWt4gaL6jRr4';
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-/**
- * Download image from URL
- */
-function downloadImage(url, filepath) {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(filepath);
-    https.get(url, (response) => {
-      response.pipe(file);
-      file.on('finish', () => {
-        file.close();
-        resolve(filepath);
-      });
-    }).on('error', (err) => {
-      fs.unlink(filepath, () => {}); // Delete the file async
-      reject(err);
-    });
-  });
-}
+const postcardId = '8e1c09ff-f545-4d32-a6f1-16ad52804451';
 
-/**
- * Generate NFT descriptors using AR.js NFT tools
- * For now, we'll create mock files that work with AR.js
- */
-async function generateNFTFiles(imagePath, outputDir) {
-  console.log('Generating NFT files for:', imagePath);
-  
-  // Create output directory
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
-  
-  const baseName = path.join(outputDir, 'target');
-  
-  // For now, we'll create mock NFT files with proper structure
-  // In production, you would use AR.js NFT tools or similar
-  
-  // Create mock .iset file (Image Set)
-  const isetContent = Buffer.from([
-    // Mock binary data for .iset file
-    0x49, 0x53, 0x45, 0x54, // "ISET" header
-    0x01, 0x00, 0x00, 0x00, // Version
-    0x01, 0x00, 0x00, 0x00, // Number of images
-    0x00, 0x03, 0x00, 0x00, // Width (768)
-    0x00, 0x04, 0x00, 0x00, // Height (1024)
-    // Add more mock data...
-    ...Array(1000).fill(0x00)
-  ]);
-  
-  // Create mock .fset file (Feature Set)
-  const fsetContent = Buffer.from([
-    // Mock binary data for .fset file
-    0x46, 0x53, 0x45, 0x54, // "FSET" header
-    0x01, 0x00, 0x00, 0x00, // Version
-    0x64, 0x00, 0x00, 0x00, // Number of features (100)
-    // Add more mock data...
-    ...Array(2000).fill(0x00)
-  ]);
-  
-  // Create mock .fset3 file (Feature Set 3)
-  const fset3Content = Buffer.from([
-    // Mock binary data for .fset3 file
-    0x46, 0x53, 0x45, 0x33, // "FSE3" header
-    0x01, 0x00, 0x00, 0x00, // Version
-    0x32, 0x00, 0x00, 0x00, // Number of features (50)
-    // Add more mock data...
-    ...Array(1500).fill(0x00)
-  ]);
-  
-  // Write files
-  fs.writeFileSync(`${baseName}.iset`, isetContent);
-  fs.writeFileSync(`${baseName}.fset`, fsetContent);
-  fs.writeFileSync(`${baseName}.fset3`, fset3Content);
-  
-  console.log('✓ Generated NFT files:');
-  console.log(`  - ${baseName}.iset`);
-  console.log(`  - ${baseName}.fset`);
-  console.log(`  - ${baseName}.fset3`);
-  
-  return {
-    iset: `${baseName}.iset`,
-    fset: `${baseName}.fset`,
-    fset3: `${baseName}.fset3`
-  };
-}
+async function generateRealNFTDescriptors(imageUrl, postcardId, userId) {
+  const tempDir = path.join(process.cwd(), 'temp');
+  const imagePath = path.join(tempDir, `${postcardId}-image.jpg`);
+  const outputDir = path.join(tempDir, `${postcardId}-nft`);
 
-/**
- * Upload files to Supabase Storage
- */
-async function uploadToStorage(filePath, storagePath) {
   try {
-    const fileBuffer = fs.readFileSync(filePath);
+    // Crear directorios temporales
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // Descargar la imagen
+    console.log('📥 Descargando imagen desde:', imageUrl);
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Error al descargar imagen: ${response.status}`);
+    }
     
-    const { data, error } = await supabase.storage
+    const imageBuffer = await response.arrayBuffer();
+    fs.writeFileSync(imagePath, Buffer.from(imageBuffer));
+    console.log('✅ Imagen descargada a:', imagePath);
+
+    // Verificar si existe el CLI de nft-marker-creator
+    const nftCreatorPath = path.join(process.cwd(), 'node_modules', '.bin', 'nft-marker-creator.cmd');
+    const nftCreatorPathUnix = path.join(process.cwd(), 'node_modules', '.bin', 'nft-marker-creator');
+    
+    let command;
+    if (fs.existsSync(nftCreatorPath)) {
+      command = `"${nftCreatorPath}" -i "${imagePath}" -o "${outputDir}" -n target`;
+    } else if (fs.existsSync(nftCreatorPathUnix)) {
+      command = `"${nftCreatorPathUnix}" -i "${imagePath}" -o "${outputDir}" -n target`;
+    } else {
+      // Intentar usar npx
+      command = `npx @webarkit/nft-marker-creator-app -i "${imagePath}" -o "${outputDir}" -n target`;
+    }
+    
+    console.log('🔧 Ejecutando comando NFT:', command);
+    const { stdout, stderr } = await execAsync(command, { timeout: 60000 }); // 60 segundos timeout
+    
+    if (stderr) {
+      console.warn('⚠️ NFT Creator stderr:', stderr);
+    }
+    console.log('📄 NFT Creator stdout:', stdout);
+
+    // Verificar que los archivos se generaron
+    const isetPath = path.join(outputDir, 'target.iset');
+    const fsetPath = path.join(outputDir, 'target.fset');
+    const fset3Path = path.join(outputDir, 'target.fset3');
+
+    if (!fs.existsSync(isetPath) || !fs.existsSync(fsetPath) || !fs.existsSync(fset3Path)) {
+      console.error('❌ Archivos faltantes:');
+      console.error('- ISET:', fs.existsSync(isetPath) ? '✅' : '❌');
+      console.error('- FSET:', fs.existsSync(fsetPath) ? '✅' : '❌');
+      console.error('- FSET3:', fs.existsSync(fset3Path) ? '✅' : '❌');
+      throw new Error('No se generaron todos los archivos NFT necesarios');
+    }
+
+    console.log('🎉 Archivos NFT generados exitosamente');
+    console.log('- ISET:', fs.statSync(isetPath).size, 'bytes');
+    console.log('- FSET:', fs.statSync(fsetPath).size, 'bytes');
+    console.log('- FSET3:', fs.statSync(fset3Path).size, 'bytes');
+
+    // Subir archivos a Supabase Storage
+    const basePath = `${userId}/${postcardId}/nft`;
+    
+    const isetBuffer = fs.readFileSync(isetPath);
+    const fsetBuffer = fs.readFileSync(fsetPath);
+    const fset3Buffer = fs.readFileSync(fset3Path);
+
+    console.log('📤 Subiendo archivos a Supabase Storage...');
+
+    // Subir archivos
+    const { error: isetError } = await supabase.storage
       .from('postcards')
-      .upload(storagePath, fileBuffer, {
+      .upload(`${basePath}/target.iset`, isetBuffer, {
         contentType: 'application/octet-stream',
         upsert: true
       });
-    
-    if (error) {
-      console.error(`Error uploading ${storagePath}:`, error);
-      return null;
-    }
-    
-    console.log(`✓ Uploaded: ${storagePath}`);
-    return data;
-  } catch (error) {
-    console.error(`Error uploading ${filePath}:`, error);
-    return null;
-  }
-}
 
-/**
- * Generate signed URLs for NFT files
- */
-async function generateSignedUrls(userId, postcardId) {
-  const basePath = `postcards/${userId}/${postcardId}/nft/target`;
-  const signedUrls = {};
-  
-  const extensions = ['iset', 'fset', 'fset3'];
-  
-  for (const ext of extensions) {
-    const filePath = `${basePath}.${ext}`;
-    
-    const { data, error } = await supabase.storage
+    const { error: fsetError } = await supabase.storage
       .from('postcards')
-      .createSignedUrl(filePath, 3600 * 24); // 24 hours
+      .upload(`${basePath}/target.fset`, fsetBuffer, {
+        contentType: 'application/octet-stream',
+        upsert: true
+      });
+
+    const { error: fset3Error } = await supabase.storage
+      .from('postcards')
+      .upload(`${basePath}/target.fset3`, fset3Buffer, {
+        contentType: 'application/octet-stream',
+        upsert: true
+      });
+
+    if (isetError || fsetError || fset3Error) {
+      throw new Error(`Error subiendo archivos: ${isetError?.message || fsetError?.message || fset3Error?.message}`);
+    }
+
+    console.log('✅ Archivos NFT subidos a Supabase Storage');
+
+    // Generar URLs firmadas
+    const { data: isetData } = await supabase.storage
+      .from('postcards')
+      .createSignedUrl(`${basePath}/target.iset`, 3600 * 24 * 7); // 7 días
+
+    const { data: fsetData } = await supabase.storage
+      .from('postcards')
+      .createSignedUrl(`${basePath}/target.fset`, 3600 * 24 * 7);
+
+    const { data: fset3Data } = await supabase.storage
+      .from('postcards')
+      .createSignedUrl(`${basePath}/target.fset3`, 3600 * 24 * 7);
+
+    // Limpiar archivos temporales
+    try {
+      fs.unlinkSync(imagePath);
+      fs.unlinkSync(isetPath);
+      fs.unlinkSync(fsetPath);
+      fs.unlinkSync(fset3Path);
+      fs.rmSync(outputDir, { recursive: true });
+      console.log('🧹 Archivos temporales limpiados');
+    } catch (cleanupError) {
+      console.warn('⚠️ Error limpiando archivos temporales:', cleanupError);
+    }
+
+    return {
+      descriptorsBasePath: basePath + '/target',
+      isetUrl: isetData?.signedUrl || '',
+      fsetUrl: fsetData?.signedUrl || '',
+      fset3Url: fset3Data?.signedUrl || ''
+    };
+
+  } catch (error) {
+    console.error('💥 Error generando descriptores NFT:', error);
     
-    if (error) {
-      console.error(`Error creating signed URL for ${ext}:`, error);
-      return null;
+    // Limpiar archivos temporales en caso de error
+    try {
+      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+      if (fs.existsSync(outputDir)) {
+        fs.rmSync(outputDir, { recursive: true, force: true });
+      }
+    } catch (cleanupError) {
+      console.warn('⚠️ Error limpiando archivos temporales:', cleanupError);
     }
     
-    signedUrls[ext] = data.signedUrl;
+    throw error;
   }
-  
-  return signedUrls;
 }
 
-async function generateRealNFTDescriptors() {
-  console.log('=== GENERATING REAL NFT DESCRIPTORS ===');
-  
-  const postcardId = '47343e7a-7b1b-48ed-ad42-54739498d903';
-  
+async function testRealNFTGeneration() {
   try {
+    console.log('🚀 Iniciando prueba de generación de NFT reales...');
+    
     // Get postcard data
-    const { data: postcard, error: fetchError } = await supabase
+    const { data: postcard, error } = await supabase
       .from('postcards')
       .select('*')
       .eq('id', postcardId)
       .single();
     
-    if (fetchError || !postcard) {
-      console.error('❌ Postcard not found:', fetchError?.message);
+    if (error) {
+      console.error('❌ Error obteniendo postal:', error);
       return;
     }
     
-    console.log('Postcard found:', {
+    console.log('📮 Postal encontrada:', {
       id: postcard.id,
-      user_id: postcard.user_id,
       processing_status: postcard.processing_status,
-      has_image_url: !!postcard.image_url
+      image_url: postcard.image_url,
+      nft_descriptors: postcard.nft_descriptors
     });
     
-    // Create temp directory
-    const tempDir = path.join(__dirname, 'temp');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir);
-    }
+    // Extract user_id from image_url
+    const pathParts = postcard.image_url.split('/');
+    const userId = pathParts[0]; // Assuming format: user_id/postcard_id/image.jpg
     
-    // Download image
-    console.log('Downloading image...');
-    const imagePath = path.join(tempDir, 'target.jpg');
+    console.log('👤 Usuario ID extraído:', userId);
     
-    // The image is already publicly accessible, use the URL directly
-    const imageUrl = postcard.image_url;
-    console.log('Using image URL:', imageUrl);
+    // Generate signed URL for the image
+    const { data: imageSignedData } = await supabase.storage
+      .from('postcards')
+      .createSignedUrl(postcard.image_url, 3600); // 1 hora
     
-    await downloadImage(imageUrl, imagePath);
-    console.log('✓ Image downloaded');
-    
-    // Generate NFT files
-    const nftDir = path.join(tempDir, 'nft');
-    const nftFiles = await generateNFTFiles(imagePath, nftDir);
-    
-    // Upload NFT files to storage
-    console.log('Uploading NFT files to storage...');
-    const uploadPromises = [];
-    
-    for (const [ext, filePath] of Object.entries(nftFiles)) {
-      const storagePath = `postcards/${postcard.user_id}/${postcardId}/nft/target.${ext}`;
-      uploadPromises.push(uploadToStorage(filePath, storagePath));
-    }
-    
-    await Promise.all(uploadPromises);
-    
-    // Generate signed URLs
-    console.log('Generating signed URLs...');
-    const signedUrls = await generateSignedUrls(postcard.user_id, postcardId);
-    
-    if (!signedUrls) {
-      console.error('❌ Failed to generate signed URLs');
+    if (!imageSignedData?.signedUrl) {
+      console.error('❌ No se pudo generar URL firmada para la imagen');
       return;
     }
     
-    // Update postcard with real NFT descriptors
-    const realDescriptors = {
-      files: signedUrls,
-      generated: true,
-      timestamp: new Date().toISOString(),
-      descriptorUrl: `postcards/${postcard.user_id}/${postcardId}/nft/target`
-    };
+    console.log('🔗 URL firmada de imagen generada');
     
-    console.log('Updating postcard with real NFT descriptors...');
+    // Generate real NFT descriptors
+    console.log('🔧 Generando descriptores NFT reales...');
+    const result = await generateRealNFTDescriptors(
+      imageSignedData.signedUrl,
+      postcard.id,
+      userId
+    );
     
+    console.log('✅ Descriptores NFT generados exitosamente:', result);
+    
+    // Update postcard with new descriptors
     const { error: updateError } = await supabase
       .from('postcards')
       .update({
-        nft_descriptors: realDescriptors,
+        nft_descriptors: {
+          base_path: result.descriptorsBasePath,
+          iset_url: result.isetUrl,
+          fset_url: result.fsetUrl,
+          fset3_url: result.fset3Url
+        },
         processing_status: 'ready',
         updated_at: new Date().toISOString()
       })
       .eq('id', postcardId);
     
     if (updateError) {
-      console.error('❌ Error updating postcard:', updateError);
+      console.error('❌ Error actualizando postal:', updateError);
       return;
     }
     
-    console.log('✅ Successfully generated real NFT descriptors!');
-    console.log('Real descriptors:', JSON.stringify(realDescriptors, null, 2));
-    
-    // Cleanup temp files
-    fs.rmSync(tempDir, { recursive: true, force: true });
-    console.log('✓ Cleaned up temporary files');
+    console.log('🎉 Postal actualizada exitosamente con descriptores reales!');
     
   } catch (error) {
-    console.error('❌ Error generating real NFT descriptors:', error);
+    console.error('💥 Error en la prueba:', error);
   }
 }
 
-generateRealNFTDescriptors();
+// Run the test
+testRealNFTGeneration();

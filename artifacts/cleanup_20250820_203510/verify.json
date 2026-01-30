@@ -1,0 +1,10 @@
+{
+  "src\\app\\icon-512.png": false,
+  "tsconfig.tsbuildinfo": false,
+  "vercel.json": false,
+  "eslint.config.js": false,
+  "tailwind.config.ts": false,
+  "ar-postcard-app": false,
+  "src\\styles": false,
+  "logs": false
+}

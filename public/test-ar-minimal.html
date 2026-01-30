@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AR Minimal Test</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar-nft.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            overflow: hidden;
+        }
+        
+        #debug {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+            font-size: 12px;
+            max-width: 300px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="debug">
+        <strong>AR Minimal Debug:</strong><br>
+        <div id="debug-log"></div>
+    </div>
+
+    <!-- Configuración mínima de AR.js -->
+    <a-scene
+        vr-mode-ui="enabled: false"
+        arjs="sourceType: webcam; debugUIEnabled: false;"
+        embedded
+        style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;"
+    >
+        <!-- Solo cámara, sin NFT para probar -->
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+        const debugLogEl = document.getElementById('debug-log');
+        
+        function log(message) {
+            console.log(message);
+            debugLogEl.innerHTML += message + '<br>';
+            debugLogEl.scrollTop = debugLogEl.scrollHeight;
+        }
+        
+        // Verificar acceso a cámara
+        async function checkCamera() {
+            try {
+                log('🔍 Verificando cámara...');
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                log('✅ Cámara accesible');
+                
+                // Crear video element para mostrar stream
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.autoplay = true;
+                video.muted = true;
+                video.playsInline = true;
+                video.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    object-fit: cover;
+                    z-index: -1;
+                `;
+                document.body.appendChild(video);
+                log('📹 Video de cámara añadido manualmente');
+                
+                return stream;
+            } catch (error) {
+                log('❌ Error cámara: ' + error.message);
+                return null;
+            }
+        }
+        
+        // Verificar A-Frame
+        function checkAFrame() {
+            if (window.AFRAME) {
+                log('✅ A-Frame cargado');
+                
+                const scene = document.querySelector('a-scene');
+                if (scene) {
+                    log('✅ Escena A-Frame encontrada');
+                    
+                    scene.addEventListener('loaded', () => {
+                        log('✅ Escena A-Frame inicializada');
+                        
+                        // Verificar canvas
+                        setTimeout(() => {
+                            const canvas = document.querySelector('canvas');
+                            if (canvas) {
+                                log('🎨 Canvas encontrado: ' + canvas.width + 'x' + canvas.height);
+                                log('🎨 Canvas style: ' + canvas.style.cssText);
+                                
+                                // Hacer canvas transparente
+                                canvas.style.cssText = `
+                                    position: fixed !important;
+                                    top: 0 !important;
+                                    left: 0 !important;
+                                    width: 100vw !important;
+                                    height: 100vh !important;
+                                    background: transparent !important;
+                                    z-index: 1 !important;
+                                `;
+                                log('🎨 Canvas hecho transparente');
+                            } else {
+                                log('❌ No se encontró canvas');
+                            }
+                        }, 1000);
+                    });
+                }
+            } else {
+                log('❌ A-Frame no cargado');
+                setTimeout(checkAFrame, 500);
+            }
+        }
+        
+        // Inicialización
+        window.addEventListener('load', async () => {
+            log('🚀 Iniciando test AR mínimo...');
+            
+            // Verificar cámara primero
+            const stream = await checkCamera();
+            
+            if (stream) {
+                // Verificar A-Frame después
+                setTimeout(checkAFrame, 1000);
+            }
+        });
+        
+        // Log de errores
+        window.addEventListener('error', (e) => {
+            log('❌ Error: ' + e.message);
+        });
+    </script>
+</body>
+</html>

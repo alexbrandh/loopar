@@ -234,7 +234,7 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
    */
   const retryWithConnection = useCallback(async <T>(
     fn: () => Promise<T>,
-    maxRetries: number = 3
+    maxRetries: number = 2 // ✅ Reducido de 3 a 2 para evitar reintentos excesivos
   ): Promise<T> => {
     let lastError: Error;
     
@@ -266,7 +266,7 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
           });
           
           if (attempt < maxRetries) {
-            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+            const delay = Math.min(1000 * Math.pow(1.5, attempt - 1), 3000); // ✅ Delays más largos: 1000ms, 1500ms, max 3000ms
             logger.info(`🌐 [NETWORK] Retrying in ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
           }

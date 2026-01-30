@@ -35,7 +35,7 @@ export function useUpload(options: UseUploadOptions = {}) {
   const DEFAULT_UPLOAD_TIMEOUT_MS = Number.isFinite(ENV_UPLOAD_TIMEOUT_MS) && ENV_UPLOAD_TIMEOUT_MS > 0 ? ENV_UPLOAD_TIMEOUT_MS : 120000;
   const {
     maxFileSize = DEFAULT_MAX_FILE_SIZE, // from env (fallback 50MB)
-    allowedTypes = ['image/jpeg', 'image/png', 'video/mp4'],
+    allowedTypes = ['image/jpeg', 'image/png', 'video/mp4', 'video/quicktime'],
     onSuccess,
     onError,
   } = options;
@@ -76,7 +76,7 @@ export function useUpload(options: UseUploadOptions = {}) {
   const uploadFile = useCallback(async (file: File, uploadUrl: string, opts?: { uploadId?: string; timeoutMs?: number }): Promise<string> => {
     const fileId = opts?.uploadId ?? `${file.name}-${Date.now()}`;
     const requestId = startRequestMonitoring(uploadUrl, 'PUT');
-    
+
     logger.info('🚀 [UPLOAD] Starting file upload', {
       operation: 'upload_start',
       metadata: {
@@ -87,7 +87,7 @@ export function useUpload(options: UseUploadOptions = {}) {
         requestId
       }
     });
-    
+
     // Check network connectivity
     if (!isOnline) {
       const errorMsg = 'No hay conexión a internet. Por favor, verifica tu conexión.';
@@ -100,7 +100,7 @@ export function useUpload(options: UseUploadOptions = {}) {
       toast.error(errorMsg);
       throw new Error(errorMsg);
     }
-    
+
     // Validate file
     const validationError = await validateFile(file);
     if (validationError) {
@@ -131,12 +131,12 @@ export function useUpload(options: UseUploadOptions = {}) {
           operation: 'upload_attempt',
           metadata: { fileName: file.name, requestId }
         });
-        
+
         // Check if upload was cancelled
         if (managedController.controller.signal.aborted) {
           throw new Error('Upload cancelled');
         }
-        
+
         // Upload file with progress tracking
         const response = await fetch(uploadUrl, {
           method: 'PUT',
@@ -156,7 +156,7 @@ export function useUpload(options: UseUploadOptions = {}) {
             requestId
           }
         });
-        
+
         if (!response.ok) {
           const responseText = await response.text().catch(() => 'Unable to read response');
           logger.error('❌ [UPLOAD] Upload failed', {
@@ -173,12 +173,12 @@ export function useUpload(options: UseUploadOptions = {}) {
         }
 
         logger.info('✅ [UPLOAD] File uploaded successfully', {
-        operation: 'upload_success',
-        metadata: { fileName: file.name, requestId }
-      });
+          operation: 'upload_success',
+          metadata: { fileName: file.name, requestId }
+        });
         return response;
       });
-        
+
       // Update progress to completed
       setUploads(prev => new Map(prev.set(fileId, {
         file,
@@ -190,22 +190,22 @@ export function useUpload(options: UseUploadOptions = {}) {
       endRequestMonitoring(requestId, 'success', 200);
       onSuccess?.(file, finalUrl);
       toast.success(`${file.name} subido exitosamente`);
-      
+
       return finalUrl;
-      
+
     } catch (error) {
       const err = error instanceof Error ? error : new Error('Upload failed');
-      
+
       // Log the error for monitoring
       const errorId = logNetworkError(err, {
         url: uploadUrl,
         method: 'PUT'
       });
-      
+
       // Handle specific error types
       let userMessage = 'Error al subir el archivo';
       let errorType = 'unknown';
-      
+
       if (err.name === 'AbortError' || err.message.includes('ERR_ABORTED')) {
         if (err.message.includes('cancelled')) {
           userMessage = 'Subida cancelada';
@@ -221,7 +221,7 @@ export function useUpload(options: UseUploadOptions = {}) {
         userMessage = 'La subida tardó demasiado. Intenta con un archivo más pequeño.';
         errorType = 'timeout';
       }
-      
+
       logger.error('❌ [UPLOAD] Upload failed completely', {
         operation: 'upload_file',
         metadata: {
@@ -233,9 +233,9 @@ export function useUpload(options: UseUploadOptions = {}) {
           errorId
         }
       });
-      
+
       endRequestMonitoring(requestId, 'error', undefined, errorType);
-      
+
       setUploads(prev => new Map(prev.set(fileId, {
         file,
         progress: 0,
@@ -246,7 +246,7 @@ export function useUpload(options: UseUploadOptions = {}) {
       onError?.(file, err.message);
       toast.error(`${file.name}: ${userMessage}`);
       throw err;
-      
+
     } finally {
       // Cleanup managed by AbortControllerManager
       abortManagerRef.current.abort(fileId);
@@ -267,7 +267,7 @@ export function useUpload(options: UseUploadOptions = {}) {
 
   const cancelUpload = useCallback((uploadFileId: string) => {
     abortManagerRef.current.abort(uploadFileId);
-    
+
     // Update upload state
     setUploads(prev => {
       const newUploads = new Map(prev);
@@ -281,17 +281,17 @@ export function useUpload(options: UseUploadOptions = {}) {
       }
       return newUploads;
     });
-    
+
     logger.info('🚫 [UPLOAD] Upload cancelled by user', {
-        operation: 'upload_cancelled',
-        metadata: { uploadFileId }
-      });
+      operation: 'upload_cancelled',
+      metadata: { uploadFileId }
+    });
   }, []);
 
   const cancelAllUploads = useCallback(() => {
     logger.info('🚫 [UPLOAD] Cancelling all uploads');
     abortManagerRef.current.abortAll();
-    
+
     // Update all upload states
     setUploads(prev => {
       const newUploads = new Map();
