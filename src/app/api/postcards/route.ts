@@ -341,6 +341,9 @@ async function handleCreatePostcardWithAuth(
 
     return await handleCreatePostcard(request, validatedData, userId, context);
   } catch (error) {
+    console.error('❌ [API-POST] Unhandled error:', error);
+    console.error('❌ [API-POST] Error stack:', error instanceof Error ? error.stack : 'No stack');
+    
     if (error instanceof z.ZodError) {
       const detailedError = createDetailedError(
         'VALIDATION_ERROR',
@@ -359,8 +362,19 @@ async function handleCreatePostcardWithAuth(
       ) as unknown as NextResponse<ApiResponse<CreatePostcardResponse>>;
     }
 
-    const { response } = handleError(error, context, 'INTERNAL_SERVER_ERROR');
-    return response as unknown as NextResponse<ApiResponse<CreatePostcardResponse>>;
+    // Return detailed error in development/staging for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    return createApiResponse(
+      false,
+      undefined,
+      {
+        message: errorMessage,
+        code: 'INTERNAL_ERROR',
+        details: process.env.NODE_ENV !== 'production' ? { stack: errorStack } : undefined
+      }
+    ) as unknown as NextResponse<ApiResponse<CreatePostcardResponse>>;
   }
 }
 
