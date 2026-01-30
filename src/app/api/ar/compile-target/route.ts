@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { auth } from '@clerk/nextjs/server';
-import Jimp from 'jimp';
+import { Jimp } from 'jimp';
 
 /**
  * POST /api/ar/compile-target
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     // Process image using Jimp
     console.log(`🔧 [MINDAR] Processing image (${imageBuffer.length} bytes)...`);
     
-    let image: Jimp;
+    let image: Awaited<ReturnType<typeof Jimp.read>>;
     try {
       image = await Jimp.read(imageBuffer);
     } catch (e) {
@@ -122,13 +122,13 @@ export async function POST(request: NextRequest) {
 
     // Resize if needed (MindAR works best with images < 1024px)
     const maxSize = 1024;
-    if (image.getWidth() > maxSize || image.getHeight() > maxSize) {
-      image.scaleToFit(maxSize, maxSize);
+    if (image.width > maxSize || image.height > maxSize) {
+      image.scaleToFit({ w: maxSize, h: maxSize });
     }
 
     // Get image data for MindAR compiler
-    const width = image.getWidth();
-    const height = image.getHeight();
+    const width = image.width;
+    const height = image.height;
     
     // Create ImageData-like object for MindAR
     const imageData = {
@@ -138,13 +138,16 @@ export async function POST(request: NextRequest) {
     };
 
     // Copy pixel data from Jimp to ImageData format
-    image.scan(0, 0, width, height, function(x, y, idx) {
-      const pixelIdx = (y * width + x) * 4;
-      imageData.data[pixelIdx] = this.bitmap.data[idx];     // R
-      imageData.data[pixelIdx + 1] = this.bitmap.data[idx + 1]; // G
-      imageData.data[pixelIdx + 2] = this.bitmap.data[idx + 2]; // B
-      imageData.data[pixelIdx + 3] = this.bitmap.data[idx + 3]; // A
-    });
+    const bitmap = image.bitmap;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        imageData.data[idx] = bitmap.data[idx];     // R
+        imageData.data[idx + 1] = bitmap.data[idx + 1]; // G
+        imageData.data[idx + 2] = bitmap.data[idx + 2]; // B
+        imageData.data[idx + 3] = bitmap.data[idx + 3]; // A
+      }
+    }
 
     // Compile using MindAR
     console.log(`⚙️ [MINDAR] Compiling target (${width}x${height})...`);
