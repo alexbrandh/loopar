@@ -86,7 +86,6 @@
             const h = ar >= 1 ? 1/ar : 1;
             this.el.setAttribute('width', w);
             this.el.setAttribute('height', h);
-            console.log('📐 Plane:', w, 'x', h);
           }
         }
       }
@@ -99,7 +98,6 @@
         const statusText = document.querySelector('#status-text');
         
         this.el.addEventListener('targetFound', () => {
-          console.log('Target found!');
           status?.classList.add('found');
           if (statusText) statusText.textContent = '¡Imagen detectada!';
           if (video) {
@@ -110,7 +108,6 @@
         });
         
         this.el.addEventListener('targetLost', () => {
-          console.log('Target lost');
           status?.classList.remove('found');
           if (statusText) statusText.textContent = 'Buscando imagen...';
           if (video) video.pause();
@@ -164,7 +161,6 @@
         `;
         
         document.body.appendChild(scene);
-        console.log('✅ Scene created');
         
       } catch (error) {
         console.error('Error:', error);
