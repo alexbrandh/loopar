@@ -1,56 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { 
-      overflow: hidden; 
-      width: 100%; 
-      height: 100%; 
-      background: #000;
-      -webkit-user-select: none;
-      user-select: none;
-    }
-    #loading { 
-      position: fixed; 
-      inset: 0; 
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); 
-      display: flex; 
-      flex-direction: column;
-      align-items: center; 
-      justify-content: center; 
-      color: white; 
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-      z-index: 10000; 
-      padding: 20px;
-    }
-    #loading .icon {
-      width: 80px;
-      height: 80px;
-      background: linear-gradient(135deg, rgba(168,85,247,0.2), rgba(139,92,246,0.2));
-      border-radius: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 24px;
-      border: 1px solid rgba(168,85,247,0.3);
-    }
-    #loading .spinner {
-      width: 48px;
-      height: 48px;
-      border: 3px solid rgba(168,85,247,0.2);
-      border-top-color: #a855f7;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 20px;
-    }
-    #loading h2 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-    #loading p { font-size: 14px; opacity: 0.6; }
+    * { margin: 0; padding: 0; }
+    html, body { overflow: hidden; width: 100%; height: 100%; }
     
     #back-btn {
       position: fixed;
@@ -58,17 +14,16 @@
       left: 16px;
       width: 48px;
       height: 48px;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       border-radius: 50%;
       border: 1px solid rgba(255,255,255,0.2);
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 100;
+      z-index: 999;
       cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
     }
     
     #status {
@@ -76,275 +31,135 @@
       bottom: max(24px, env(safe-area-inset-bottom));
       left: 50%;
       transform: translateX(-50%);
-      padding: 14px 24px;
-      background: rgba(0,0,0,0.75);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-radius: 28px;
-      display: none;
+      padding: 12px 20px;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 24px;
+      display: flex;
       align-items: center;
-      gap: 10px;
-      z-index: 100;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      border: 1px solid rgba(255,255,255,0.15);
+      gap: 8px;
+      z-index: 999;
+      font-family: -apple-system, sans-serif;
     }
-    #status.visible { display: flex; }
-    #status.found { 
-      background: linear-gradient(135deg, rgba(34,197,94,0.95), rgba(22,163,74,0.95));
-      border-color: rgba(255,255,255,0.3);
-    }
+    #status.found { background: rgba(34,197,94,0.9); }
     #status .dot {
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: #fbbf24;
-      animation: pulse 1.5s infinite;
     }
-    #status.found .dot { background: #fff; animation: none; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
-    #status span { color: #fff; font-size: 15px; font-weight: 600; }
-    
-    #hint {
-      position: fixed;
-      top: max(80px, calc(env(safe-area-inset-top) + 64px));
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 12px 20px;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.1);
-      z-index: 90;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      display: none;
-      max-width: calc(100vw - 40px);
-      text-align: center;
-    }
-    #hint.visible { display: block; }
-    #hint p { color: rgba(255,255,255,0.9); font-size: 14px; }
-    
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.1); } }
+    #status.found .dot { background: #fff; }
+    #status span { color: #fff; font-size: 14px; }
   </style>
 </head>
 <body>
-  <div id="loading">
-    <div class="icon">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="1.5">
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </div>
-    <div class="spinner"></div>
-    <h2>Iniciando cámara AR</h2>
-    <p id="load-status">Cargando recursos...</p>
-  </div>
-  
   <button id="back-btn" onclick="history.back()">
     <svg width="24" height="24" fill="none" stroke="#fff" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
     </svg>
   </button>
-  
-  <div id="hint">
-    <p>📷 Apunta la cámara hacia la postal impresa</p>
-  </div>
-  
   <div id="status">
     <div class="dot"></div>
     <span>Buscando imagen...</span>
   </div>
-
   <script>
-    const loading = document.getElementById('loading');
-    const loadStatus = document.getElementById('load-status');
-    const status = document.getElementById('status');
-    const hint = document.getElementById('hint');
-    
-    function log(msg) {
-      console.log(msg);
-    }
-    
-    function showUI() {
-      status.classList.add('visible');
-      hint.classList.add('visible');
-    }
-    
-    function setFound(found) {
-      if (found) {
-        status.classList.add('found');
-        status.querySelector('span').textContent = '¡Imagen detectada!';
-        hint.classList.remove('visible');
-      } else {
-        status.classList.remove('found');
-        status.querySelector('span').textContent = 'Buscando imagen...';
-        hint.classList.add('visible');
-      }
-    }
-    
-    // Register custom video-texture component that forces texture updates
+    // Register video-texture component
     AFRAME.registerComponent('video-texture', {
-      schema: {
-        src: { type: 'selector' }
-      },
+      schema: { src: { type: 'selector' } },
       init: function() {
         this.video = this.data.src;
-        this.texture = null;
-        
         if (this.video) {
-          // Create Three.js video texture manually
           this.texture = new THREE.VideoTexture(this.video);
           this.texture.minFilter = THREE.LinearFilter;
           this.texture.magFilter = THREE.LinearFilter;
-          this.texture.format = THREE.RGBAFormat;
-          this.texture.generateMipmaps = false;
-          
-          // Apply to mesh material
           const mesh = this.el.getObject3D('mesh');
           if (mesh) {
             mesh.material = new THREE.MeshBasicMaterial({
               map: this.texture,
-              side: THREE.DoubleSide,
-              transparent: false
+              side: THREE.DoubleSide
             });
-            log('✅ Video texture aplicada');
           }
         }
       },
       tick: function() {
-        // Force texture update every frame
-        if (this.texture && this.video && this.video.readyState >= 2) {
+        if (this.texture && this.video?.readyState >= 2) {
           this.texture.needsUpdate = true;
         }
       }
     });
-    
+
     // Register target handler
     AFRAME.registerComponent('target-handler', {
       init: function() {
         this.video = document.querySelector('#vid');
+        const status = document.querySelector('#status');
+        const statusText = status?.querySelector('span');
         
         this.el.addEventListener('targetFound', () => {
-          log('🎯 TARGET FOUND!');
-          setFound(true);
+          console.log('Target found!');
+          if (status) status.classList.add('found');
+          if (statusText) statusText.textContent = '¡Imagen detectada!';
           if (this.video) {
             this.video.currentTime = 0;
-            this.video.play().then(() => log('▶️ Playing!')).catch(e => log('❌ ' + e.message));
+            this.video.play();
           }
         });
-        
         this.el.addEventListener('targetLost', () => {
-          log('Target lost');
-          setFound(false);
+          console.log('Target lost');
+          if (status) status.classList.remove('found');
+          if (statusText) statusText.textContent = 'Buscando imagen...';
           if (this.video) this.video.pause();
         });
       }
     });
-    
+
     async function init() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const postcardId = urlParams.get('id');
+      
+      if (!postcardId) {
+        document.body.innerHTML = '<div style="color:white;padding:20px;">Error: No postcard ID</div>';
+        return;
+      }
+
       try {
-        // Get postcardId from URL query param or path
-        const urlParams = new URLSearchParams(window.location.search);
-        let postcardId = urlParams.get('id');
-        
-        // Also check path for /ar/[id] format
-        const pathMatch = window.location.pathname.match(/\/ar\/([^\/]+)/);
-        if (!postcardId && pathMatch) {
-          postcardId = pathMatch[1];
-        }
-        
-        if (!postcardId) {
-          log('❌ No postcardId provided. Use ?id=xxx');
-          loading.style.display = 'none';
-          return;
-        }
-        
-        log('Obteniendo datos...');
-        loadStatus.textContent = 'Obteniendo datos...';
-        
         const response = await fetch('/api/postcards/' + postcardId);
         const result = await response.json();
         const postcard = result.data;
-        
+
         if (!postcard?.video_url) {
-          log('❌ No video URL');
+          document.body.innerHTML = '<div style="color:white;padding:20px;">Error: No video</div>';
           return;
         }
-        
-        log('✅ Datos OK');
-        
+
         const targetUrl = `/api/ar/mind-target/${postcard.user_id}/${postcard.id}`;
-        
-        // Create scene HTML
-        document.body.insertAdjacentHTML('beforeend', `
+
+        document.body.innerHTML = `
           <a-scene
-            mindar-image="imageTargetSrc: ${targetUrl}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
+            mindar-image="imageTargetSrc: ${targetUrl}; autoStart: true;"
             color-space="sRGB"
             renderer="colorManagement: true, physicallyCorrectLights"
             vr-mode-ui="enabled: false"
             device-orientation-permission-ui="enabled: false"
           >
             <a-assets>
-              <video id="vid" 
-                src="${postcard.video_url}" 
-                crossorigin="anonymous"
-                loop muted playsinline
-                webkit-playsinline>
-              </video>
+              <video id="vid" src="${postcard.video_url}" crossorigin="anonymous" loop muted playsinline></video>
             </a-assets>
             
             <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
             
             <a-entity mindar-image-target="targetIndex: 0" target-handler>
-              <a-plane 
-                id="video-plane"
-                position="0 0 0" 
-                width="1" 
-                height="1.78"
-                video-texture="src: #vid"
-                material="shader: flat; side: double; transparent: false">
-              </a-plane>
+              <a-plane position="0 0 0" width="1" height="1.78" video-texture="src: #vid" material="shader: flat"></a-plane>
             </a-entity>
           </a-scene>
-        `);
-        
-        const scene = document.querySelector('a-scene');
-        const vid = document.querySelector('#vid');
-        
-        vid.addEventListener('loadedmetadata', () => {
-          log('Video: ' + vid.videoWidth + 'x' + vid.videoHeight);
-          // Update plane aspect ratio
-          const plane = document.querySelector('#video-plane');
-          if (plane && vid.videoWidth && vid.videoHeight) {
-            const aspect = vid.videoHeight / vid.videoWidth;
-            plane.setAttribute('height', aspect);
-            log('Plane height: ' + aspect.toFixed(2));
-          }
-        });
-        
-        vid.addEventListener('canplay', () => log('Video ready'));
-        vid.addEventListener('error', () => log('❌ Video error'));
-        
-        scene.addEventListener('loaded', () => {
-          log('✅ Scene loaded');
-          loading.style.display = 'none';
-          showUI();
-        });
-        
-        scene.addEventListener('arReady', () => {
-          log('✅ AR Ready');
-        });
-        
+        `;
       } catch (error) {
-        log('❌ Error: ' + error.message);
+        document.body.innerHTML = '<div style="color:white;padding:20px;">Error: ' + error.message + '</div>';
       }
     }
-    
-    // Wait for A-Frame to be ready
-    if (AFRAME.scenes.length) {
-      init();
-    } else {
-      window.addEventListener('DOMContentLoaded', init);
-    }
+
+    window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
