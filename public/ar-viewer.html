@@ -297,8 +297,8 @@
         cameraPreview.srcObject.getTracks().forEach(t => t.stop());
       }
       
-      // Hide loading screen
-      loadingScreen.classList.add('hidden');
+      // Remove loading screen completely from DOM
+      loadingScreen.remove();
       
       // Create AR scene
       const sceneContainer = document.createElement('div');
