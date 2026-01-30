@@ -101,9 +101,18 @@
           if (status) status.classList.add('found');
           if (statusText) statusText.textContent = '¡Imagen detectada!';
           if (this.video) {
-            this.video.muted = false;
             this.video.currentTime = 0;
-            this.video.play();
+            // Safari fix: play muted first, then try to unmute
+            this.video.muted = true;
+            this.video.play().then(() => {
+              // Try to unmute after playback starts
+              this.video.muted = false;
+            }).catch(e => {
+              console.log('Play error:', e);
+              // If unmuted play fails, keep it muted
+              this.video.muted = true;
+              this.video.play();
+            });
           }
         });
         this.el.addEventListener('targetLost', () => {
