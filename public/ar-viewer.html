@@ -301,11 +301,12 @@
         // Create scene HTML
         document.body.insertAdjacentHTML('beforeend', `
           <a-scene
-            mindar-image="imageTargetSrc: ${targetUrl}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
+            mindar-image="imageTargetSrc: ${targetUrl}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no; filterMinCF: 0.0001; filterBeta: 0.001;"
             color-space="sRGB"
-            renderer="colorManagement: true; physicallyCorrectLights: true"
+            renderer="colorManagement: true; physicallyCorrectLights: true; alpha: false; antialias: true;"
             vr-mode-ui="enabled: false"
             device-orientation-permission-ui="enabled: false"
+            embedded
           >
             <a-assets>
               <video id="vid" 
