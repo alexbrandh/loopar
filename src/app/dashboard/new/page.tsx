@@ -133,9 +133,9 @@ export default function NewPostcard() {
     return Number.isFinite(n) && n > 0 ? n : 50;
   })();
   const MAX_IMAGE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
-  const MAX_VIDEO_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
+  const MAX_VIDEO_SIZE = 250 * 1024 * 1024; // 250MB para videos
   const MIN_IMAGE_RESOLUTION = 800;
-  const MAX_VIDEO_DURATION = 90; // seconds
+  // Sin límite de duración de video
 
   // Función para cancelar todas las operaciones
   const handleCancelOperation = useCallback(async () => {
@@ -336,34 +336,26 @@ export default function NewPostcard() {
     // Validate file type
     if (!file.type.startsWith('video/')) {
       toast({
-        title: 'Invalid File Type',
-        description: 'Please upload a video file.',
+        title: 'Tipo de archivo inválido',
+        description: 'Por favor sube un archivo de video.',
         variant: 'destructive',
       });
       return;
     }
 
-    // Validate file size
+    // Validate file size (250MB max)
     if (file.size > MAX_VIDEO_SIZE) {
       toast({
-        title: 'File Too Large',
-        description: `Video must be smaller than ${MAX_VIDEO_SIZE / (1024 * 1024)}MB.`,
+        title: 'Archivo muy grande',
+        description: `El video debe ser menor a ${MAX_VIDEO_SIZE / (1024 * 1024)}MB.`,
         variant: 'destructive',
       });
       return;
     }
 
     try {
-      // Validate video duration
+      // Obtener duración del video (sin límite)
       const duration = await validateVideoDuration(file);
-      if (duration > MAX_VIDEO_DURATION) {
-        toast({
-          title: 'Video Too Long',
-          description: `Video must be shorter than ${MAX_VIDEO_DURATION} seconds.`,
-          variant: 'destructive',
-        });
-        return;
-      }
 
       const preview = URL.createObjectURL(file);
       setVideoFile({
@@ -374,14 +366,14 @@ export default function NewPostcard() {
       });
 
       toast({
-        title: 'Video Uploaded',
-        description: 'Your video has been uploaded successfully.',
+        title: 'Video cargado',
+        description: 'Tu video ha sido cargado exitosamente.',
       });
     } catch (error) {
       console.error('Error processing video:', error);
       toast({
-        title: 'Upload Error',
-        description: 'Failed to process the video file.',
+        title: 'Error de carga',
+        description: 'Error al procesar el archivo de video.',
         variant: 'destructive',
       });
     }
