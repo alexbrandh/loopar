@@ -93,14 +93,14 @@ export default function Home() {
                     <p className="text-muted-foreground leading-relaxed">
                       {step.description}
                     </p>
-                    
-                    {/* Arrow connector (hidden on mobile and last item) */}
-                    {index < steps.length - 1 && (
-                      <div className="hidden lg:flex absolute -right-4 top-1/2 -translate-y-1/2 translate-x-full z-50">
-                        <ArrowRight className="w-8 h-8 text-muted-foreground/50" />
-                      </div>
-                    )}
                   </div>
+                  
+                  {/* Arrow connector - OUTSIDE card for proper z-index */}
+                  {index < steps.length - 1 && (
+                    <div className="hidden lg:flex absolute -right-4 top-1/2 -translate-y-1/2 translate-x-full z-[100]">
+                      <ArrowRight className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </div>
