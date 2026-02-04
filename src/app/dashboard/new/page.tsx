@@ -589,18 +589,19 @@ export default function NewPostcard() {
           </div>
         )}
 
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-8">
-            <Link href="/dashboard">
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Volver al Panel
-              </Button>
+        <div className="container mx-auto px-4 py-6 max-w-4xl">
+          {/* Header mejorado */}
+          <div className="mb-8">
+            <Link href="/dashboard" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary transition-colors mb-4">
+              <ArrowLeft className="mr-1.5 h-4 w-4" />
+              Volver al Panel
             </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Crear Nueva Postal Regaliz</h1>
-              <p className="text-muted-foreground mt-1">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-linear-to-br from-primary to-ring mb-4">
+                <ImageIcon className="w-7 h-7 text-white" />
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Crear Nueva Postal</h1>
+              <p className="text-muted-foreground mt-2 max-w-md mx-auto text-sm sm:text-base">
                 Sube una imagen y video para crear tu experiencia AR interactiva
               </p>
             </div>
