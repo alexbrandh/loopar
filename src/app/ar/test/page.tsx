@@ -454,7 +454,7 @@ export default function ARTestPage() {
 
   if (error || cameraStatus === 'denied' || cameraStatus === 'unavailable' || cameraStatus === 'insecure_context') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-linear-to-br from-blue-50 to-cyan-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
         <div className="text-center space-y-6 max-w-md">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Prueba AR - Error</h1>
@@ -480,7 +480,7 @@ export default function ARTestPage() {
 
   if (cameraStatus === 'checking' || !isARReady) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-linear-to-br from-blue-50 to-cyan-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
         <div className="text-center space-y-4">
           <Camera className="h-16 w-16 text-blue-500 mx-auto animate-pulse" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Cargando Prueba AR</h1>
