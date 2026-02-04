@@ -15,7 +15,7 @@ export function OfflineIndicator() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 max-w-sm">
+    <div className="fixed bottom-20 sm:bottom-4 right-4 z-60 max-w-sm">
       {!isOnline && (
         <Card className="mb-2 border-orange-200 bg-orange-50">
           <CardContent className="p-3">
@@ -43,14 +43,20 @@ export function OfflineIndicator() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => setShowInstallPrompt(false)}
+                  onClick={() => {
+                    console.log('Ahora no clicked');
+                    setShowInstallPrompt(false);
+                  }}
                   className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
                 >
                   Ahora no
                 </Button>
                 <Button
                   size="sm"
-                  onClick={installApp}
+                  onClick={() => {
+                    console.log('Instalar clicked');
+                    installApp();
+                  }}
                   className="h-6 px-2 text-xs bg-blue-600 hover:bg-blue-700"
                 >
                   Instalar
