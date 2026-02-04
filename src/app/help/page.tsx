@@ -3,64 +3,36 @@
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   Camera, 
-  Upload, 
-  Video, 
-  Smartphone, 
-  Share2, 
-  QrCode, 
   Eye, 
-  CheckCircle, 
   HelpCircle,
-  ArrowRight,
-  Play
+  ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function HelpPage() {
   const steps = [
     {
-      icon: <Upload className="h-8 w-8 text-primary" />,
-      title: "1. Sube tu Imagen Objetivo",
-      description: "Selecciona una imagen con buen contraste y detalles únicos. Evita superficies brillantes o muy lisas.",
-      tips: [
-        "Usa imágenes con alta resolución (mínimo 1024x768)",
-        "Prefiere imágenes con texturas y patrones únicos",
-        "Evita imágenes muy oscuras o con mucho brillo"
-      ]
+      number: "01",
+      title: "Sube tu Imagen",
+      description: "Selecciona una foto con buen contraste y detalles únicos. Esta imagen será el marcador que activará tu experiencia AR.",
     },
     {
-      icon: <Video className="h-8 w-8 text-ring" />,
-      title: "2. Añade tu Video AR",
-      description: "Sube el video que aparecerá flotando sobre tu imagen cuando sea detectada por la cámara.",
-      tips: [
-        "Mantén el video corto (máximo 60 segundos)",
-        "Usa alta calidad para mejor experiencia",
-        "Formatos soportados: MP4, WebM, MOV"
-      ]
+      number: "02",
+      title: "Añade tu Video",
+      description: "Sube el video que aparecerá flotando sobre la imagen cuando alguien la escanee con su cámara.",
     },
     {
-      icon: <CheckCircle className="h-8 w-8 text-chart-3" />,
-      title: "3. Procesamiento AR",
-      description: "Nuestro sistema genera automáticamente los descriptores NFT necesarios para el seguimiento AR.",
-      tips: [
-        "El procesamiento puede tomar 2-5 minutos",
-        "Recibirás notificación cuando esté listo",
-        "Si hay errores, revisa la calidad de tu imagen"
-      ]
+      number: "03",
+      title: "Espera el Procesamiento",
+      description: "Nuestro sistema procesa automáticamente tu imagen para crear los marcadores AR. Esto toma unos minutos.",
     },
     {
-      icon: <Share2 className="h-8 w-8 text-chart-4" />,
-      title: "4. Comparte tu Postal",
-      description: "Una vez procesada, comparte tu postal AR con códigos QR o enlaces directos.",
-      tips: [
-        "Genera códigos QR para fácil acceso móvil",
-        "Comparte enlaces directos en redes sociales",
-        "Las postales son públicas por defecto"
-      ]
+      number: "04",
+      title: "Comparte tu Postal",
+      description: "Una vez lista, comparte el enlace o código QR. Cualquiera puede ver tu postal AR desde su navegador.",
     }
   ];
 
@@ -112,42 +84,27 @@ export default function HelpPage() {
           </div>
         </div>
 
-        {/* Quick Start Guide */}
+        {/* Quick Start Guide - Simplified */}
         <Card className="mb-12">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Play className="h-6 w-6 text-primary" />
-              Guía Rápida de Inicio
-            </CardTitle>
+            <CardTitle>Cómo Crear tu Postal AR</CardTitle>
             <CardDescription>
-              Sigue estos pasos para crear tu primera postal AR en minutos
+              Sigue estos 4 pasos simples
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-8">
+            <div className="space-y-6">
               {steps.map((step, index) => (
-                <div key={index} className="flex gap-4">
-                  <div className="shrink-0">
-                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-                      {step.icon}
-                    </div>
+                <div key={index} className="flex gap-4 items-start">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-sm font-bold text-primary">{step.number}</span>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-foreground mb-2">{step.title}</h3>
-                    <p className="text-muted-foreground mb-3">{step.description}</p>
-                    <div className="space-y-1">
-                      {step.tips.map((tip, tipIndex) => (
-                        <div key={tipIndex} className="flex items-start gap-2 text-sm text-muted-foreground/70">
-                          <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                          <span>{tip}</span>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="flex-1 pt-1">
+                    <h3 className="font-semibold text-foreground mb-1">{step.title}</h3>
+                    <p className="text-muted-foreground text-sm">{step.description}</p>
                   </div>
                   {index < steps.length - 1 && (
-                    <div className="shrink-0 flex items-center">
-                      <ArrowRight className="h-5 w-5 text-muted-foreground/50" />
-                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground/30 mt-2 hidden sm:block" />
                   )}
                 </div>
               ))}
@@ -155,45 +112,20 @@ export default function HelpPage() {
           </CardContent>
         </Card>
 
-        {/* Features Overview */}
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Smartphone className="h-5 w-5 text-primary" />
-                Experiencia AR Móvil
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Tus postales funcionan en cualquier smartphone con cámara. Los usuarios solo necesitan abrir el enlace en su navegador.
-              </p>
-              <div className="space-y-2">
-                <Badge variant="outline">Sin Apps Requeridas</Badge>
-                <Badge variant="outline">Compatible con iOS/Android</Badge>
-                <Badge variant="outline">Funciona en Navegadores</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <QrCode className="h-5 w-5 text-ring" />
-                Compartir Fácil
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Genera códigos QR automáticamente y comparte enlaces directos en redes sociales o mensajería.
-              </p>
-              <div className="space-y-2">
-                <Badge variant="outline">Códigos QR Automáticos</Badge>
-                <Badge variant="outline">Enlaces Directos</Badge>
-                <Badge variant="outline">Compartir en Redes</Badge>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Features - Simplified */}
+        <div className="grid sm:grid-cols-2 gap-4 mb-12">
+          <div className="p-6 rounded-xl bg-card border border-border">
+            <h3 className="font-semibold text-foreground mb-2">Sin Apps</h3>
+            <p className="text-sm text-muted-foreground">
+              Funciona directamente en el navegador. Compatible con iOS y Android.
+            </p>
+          </div>
+          <div className="p-6 rounded-xl bg-card border border-border">
+            <h3 className="font-semibold text-foreground mb-2">Fácil de Compartir</h3>
+            <p className="text-sm text-muted-foreground">
+              Genera códigos QR automáticos y enlaces directos para redes sociales.
+            </p>
+          </div>
         </div>
 
         {/* FAQ Section */}
