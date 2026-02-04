@@ -127,7 +127,7 @@ export default function HelpPage() {
             <div className="grid gap-8">
               {steps.map((step, index) => (
                 <div key={index} className="flex gap-4">
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
                       {step.icon}
                     </div>
@@ -138,14 +138,14 @@ export default function HelpPage() {
                     <div className="space-y-1">
                       {step.tips.map((tip, tipIndex) => (
                         <div key={tipIndex} className="flex items-start gap-2 text-sm text-muted-foreground/70">
-                          <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                           <span>{tip}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                   {index < steps.length - 1 && (
-                    <div className="flex-shrink-0 flex items-center">
+                    <div className="shrink-0 flex items-center">
                       <ArrowRight className="h-5 w-5 text-muted-foreground/50" />
                     </div>
                   )}

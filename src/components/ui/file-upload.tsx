@@ -127,7 +127,7 @@ export default function FileUpload({
         className="px-4 py-4 flex items-start gap-4 rounded-xl bg-secondary/50 border border-primary/10 shadow hover:shadow-md transition-all duration-200"
       >
         {/* Thumbnail */}
-        <div className="relative flex-shrink-0">
+        <div className="relative shrink-0">
           {file.type.startsWith("image/") ? (
             <img
               src={file.preview}
@@ -164,9 +164,9 @@ export default function FileUpload({
             {/* Filename */}
             <div className="flex items-center gap-2 min-w-0">
               {type === "image" ? (
-                <ImageIcon className="w-5 h-5 flex-shrink-0 text-primary" />
+                <ImageIcon className="w-5 h-5 shrink-0 text-primary" />
               ) : (
-                <Video className="w-5 h-5 flex-shrink-0 text-primary" />
+                <Video className="w-5 h-5 shrink-0 text-primary" />
               )}
               <h4
                 className="font-medium text-base md:text-lg truncate text-foreground"
