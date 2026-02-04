@@ -774,7 +774,7 @@ export default function NewPostcard() {
                   uploadProgress={currentStep === 'uploading-image' ? uploadProgress : undefined}
                   title="Sube tu imagen"
                   description="Esta imagen activará tu contenido AR"
-                  supportedFormats="JPG, PNG • Mín. 800x800px"
+                  supportedFormats="JPG, PNG"
                   disabled={currentStep !== 'idle'}
                 />
               </CardContent>
@@ -791,7 +791,7 @@ export default function NewPostcard() {
                       <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Este video aparecerá flotando sobre la imagen cuando sea detectada. Mantén el video corto (máx. 90 segundos) y con buena calidad para la mejor experiencia AR.</p>
+                      <p>Este video aparecerá flotando sobre la imagen cuando sea detectada. Usa buena calidad para la mejor experiencia AR.</p>
                     </TooltipContent>
                   </Tooltip>
                 </CardTitle>
@@ -820,7 +820,7 @@ export default function NewPostcard() {
                   uploadProgress={currentStep === 'uploading-video' ? uploadProgress : undefined}
                   title="Sube tu video"
                   description="Este video aparecerá sobre la imagen AR"
-                  supportedFormats="MP4, MOV • Máx. 90 segundos"
+                  supportedFormats="MP4, MOV"
                   disabled={currentStep !== 'idle'}
                 />
               </CardContent>
@@ -837,7 +837,7 @@ export default function NewPostcard() {
                       <li>• Usa imágenes de alto contraste con detalles claros</li>
                       <li>• Evita superficies reflectantes o transparentes</li>
                       <li>• Asegura buena iluminación al tomar fotos</li>
-                      <li>• Mantén los videos bajo 90 segundos para carga óptima</li>
+                      <li>• Usa videos de buena calidad para mejor experiencia</li>
                     </ul>
                   </div>
                 </div>
