@@ -46,6 +46,48 @@
     #status span { color: #fff; font-size: 14px; }
     
     .a-enter-vr, .a-enter-ar { display: none !important; }
+    
+    #play-btn {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80px;
+      height: 80px;
+      background: rgba(59, 130, 246, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      transition: transform 0.2s, background 0.2s;
+    }
+    #play-btn:hover {
+      transform: translate(-50%, -50%) scale(1.1);
+      background: rgba(37, 99, 235, 0.95);
+    }
+    #play-btn:active {
+      transform: translate(-50%, -50%) scale(0.95);
+    }
+    #play-btn.hidden { display: none; }
+    
+    #play-hint {
+      position: fixed;
+      top: calc(50% + 60px);
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-family: -apple-system, sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+    #play-hint.hidden { display: none; }
   </style>
 </head>
 <body>
@@ -58,8 +100,23 @@
     <div class="dot"></div>
     <span id="status-text">Cargando...</span>
   </div>
+  
+  <button id="play-btn" class="hidden">
+    <svg width="36" height="36" fill="#fff" viewBox="0 0 24 24">
+      <path d="M8 5v14l11-7z"/>
+    </svg>
+  </button>
+  <div id="play-hint" class="hidden">Toca para reproducir</div>
 
   <script>
+    let videoReady = false;
+    let targetFound = false;
+    let userInteracted = false;
+    
+    // Detect mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
     // Custom components
     AFRAME.registerComponent('video-texture', {
       schema: { src: { type: 'selector' } },
@@ -79,13 +136,16 @@
       tick: function() {
         if (this.texture && this.video?.readyState >= 2) {
           this.texture.needsUpdate = true;
+          // Set dimensions based on video aspect ratio (keeps original aspect)
           if (!this.dimensionsSet && this.video.videoWidth > 0) {
             this.dimensionsSet = true;
-            const ar = this.video.videoWidth / this.video.videoHeight;
-            const w = ar >= 1 ? 1 : ar;
-            const h = ar >= 1 ? 1/ar : 1;
+            const videoAspect = this.video.videoWidth / this.video.videoHeight;
+            // Video plane fills the target width, height adjusts to maintain aspect
+            const w = 1;
+            const h = 1 / videoAspect;
             this.el.setAttribute('width', w);
             this.el.setAttribute('height', h);
+            console.log('Video dimensions set:', w, 'x', h, 'aspect:', videoAspect);
           }
         }
       }
@@ -96,24 +156,76 @@
         const video = document.querySelector('#vid');
         const status = document.querySelector('#status');
         const statusText = document.querySelector('#status-text');
+        const playBtn = document.querySelector('#play-btn');
+        const playHint = document.querySelector('#play-hint');
         
         this.el.addEventListener('targetFound', () => {
+          targetFound = true;
           status?.classList.add('found');
           if (statusText) statusText.textContent = '¡Imagen detectada!';
+          
           if (video) {
+            // Try to autoplay
             video.currentTime = 0;
-            video.muted = true;
-            video.play().then(() => video.muted = false).catch(() => video.play());
+            video.play().then(() => {
+              console.log('Video playing');
+              userInteracted = true;
+              playBtn?.classList.add('hidden');
+              playHint?.classList.add('hidden');
+            }).catch((err) => {
+              console.log('Autoplay blocked, showing play button:', err);
+              // Show play button over the target
+              playBtn?.classList.remove('hidden');
+              playHint?.classList.remove('hidden');
+            });
           }
         });
         
         this.el.addEventListener('targetLost', () => {
+          targetFound = false;
           status?.classList.remove('found');
           if (statusText) statusText.textContent = 'Buscando imagen...';
           if (video) video.pause();
         });
       }
     });
+    
+    function setupPlayButton() {
+      const playBtn = document.querySelector('#play-btn');
+      const playHint = document.querySelector('#play-hint');
+      const video = document.querySelector('#vid');
+      
+      if (playBtn && video) {
+        playBtn.addEventListener('click', async () => {
+          userInteracted = true;
+          
+          try {
+            // For iOS, we need to load and play
+            if (isIOS) {
+              video.load();
+            }
+            
+            video.muted = false;
+            await video.play();
+            videoReady = true;
+            playBtn.classList.add('hidden');
+            playHint?.classList.add('hidden');
+            console.log('Video started by user interaction');
+          } catch (err) {
+            console.error('Play failed:', err);
+            // Try muted first then unmute
+            video.muted = true;
+            video.play().then(() => {
+              setTimeout(() => { video.muted = false; }, 100);
+              videoReady = true;
+              playBtn.classList.add('hidden');
+              playHint?.classList.add('hidden');
+            }).catch(console.error);
+          }
+        });
+      }
+      // Button will be shown when target is detected, not before
+    }
 
     // Initialize
     async function init() {
@@ -138,9 +250,11 @@
         }
         
         const videoUrl = postcard.video_url;
+        const imageUrl = postcard.image_url;
         const targetUrl = `/api/ar/mind-target/${postcard.user_id}/${postcard.id}`;
         
         statusText.textContent = 'Buscando imagen...';
+        videoReady = !isMobile; // On desktop, video is ready; on mobile, needs user interaction
         
         // Create scene
         const scene = document.createElement('a-scene');
@@ -152,15 +266,16 @@
         
         scene.innerHTML = `
           <a-assets>
-            <video id="vid" src="${videoUrl}" crossorigin="anonymous" loop muted playsinline></video>
+            <video id="vid" src="${videoUrl}" crossorigin="anonymous" loop muted playsinline webkit-playsinline preload="auto"></video>
           </a-assets>
           <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
           <a-entity mindar-image-target="targetIndex: 0" target-handler>
-            <a-plane position="0 0 0" width="1" height="0.5625" video-texture="src: #vid" material="shader: flat"></a-plane>
+            <a-plane position="0 0 0.01" width="1" height="0.5625" video-texture="src: #vid" material="shader: flat"></a-plane>
           </a-entity>
         `;
         
         document.body.appendChild(scene);
+        setupPlayButton();
         
       } catch (error) {
         console.error('Error:', error);

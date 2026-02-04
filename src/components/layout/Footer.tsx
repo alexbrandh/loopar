@@ -1,20 +1,33 @@
 'use client';
 
 import Link from 'next/link';
-import { Camera, Github, Twitter, Mail } from 'lucide-react';
+import { Github, Twitter, Mail } from 'lucide-react';
+import Image from 'next/image';
 
 export function Footer() {
   return (
-    <footer className="border-t bg-background">
-      <div className="container py-8 md:py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="border-t border-border/50 bg-background/50 backdrop-blur-sm">
+      <div className="container py-10 md:py-14 px-4 md:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 md:gap-8">
           {/* Brand */}
           <div className="space-y-4">
-            <Link href="/" className="flex items-center space-x-2">
-              <Camera className="h-5 w-5 text-primary" />
-              <span className="font-bold text-lg">Loopar</span>
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <Image 
+                src="/regaliz-isotipo.svg" 
+                alt="Regaliz" 
+                width={36} 
+                height={36} 
+                className="transition-transform group-hover:scale-105"
+              />
+              <Image 
+                src="/regaliz-logo.svg" 
+                alt="Regaliz" 
+                width={95} 
+                height={26} 
+                className="dark:brightness-0 dark:invert"
+              />
             </Link>
-            <p className="text-sm text-muted-foreground max-w-xs">
+            <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
               Crea experiencias AR mágicas combinando tus fotos con videos. 
               Comparte recuerdos que cobran vida.
             </p>
@@ -22,8 +35,8 @@ export function Footer() {
 
           {/* Product */}
           <div className="space-y-4">
-            <h3 className="font-semibold">Producto</h3>
-            <ul className="space-y-2 text-sm">
+            <h3 className="font-semibold text-foreground">Producto</h3>
+            <ul className="space-y-2.5 text-sm">
               <li>
                 <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
                   Panel
@@ -44,8 +57,8 @@ export function Footer() {
 
           {/* Support */}
           <div className="space-y-4">
-            <h3 className="font-semibold">Soporte</h3>
-            <ul className="space-y-2 text-sm">
+            <h3 className="font-semibold text-foreground">Soporte</h3>
+            <ul className="space-y-2.5 text-sm">
               <li>
                 <Link href="/help" className="text-muted-foreground hover:text-foreground transition-colors">
                   Centro de Ayuda
@@ -66,37 +79,37 @@ export function Footer() {
 
           {/* Connect */}
           <div className="space-y-4">
-            <h3 className="font-semibold">Conectar</h3>
-            <div className="flex space-x-4">
+            <h3 className="font-semibold text-foreground">Conectar</h3>
+            <div className="flex gap-3">
               <Link 
                 href="https://github.com" 
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
                 aria-label="GitHub"
               >
-                <Github className="h-5 w-5" />
+                <Github className="h-4 w-4" />
               </Link>
               <Link 
                 href="https://twitter.com" 
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
                 aria-label="Twitter"
               >
-                <Twitter className="h-5 w-5" />
+                <Twitter className="h-4 w-4" />
               </Link>
               <Link 
-                href="mailto:support@loopar.com" 
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                href="mailto:hola@regaliz.app" 
+                className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
                 aria-label="Email"
               >
-                <Mail className="h-5 w-5" />
+                <Mail className="h-4 w-4" />
               </Link>
             </div>
           </div>
         </div>
 
-        <div className="mt-8 pt-8 border-t">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+        <div className="mt-10 pt-8 border-t border-border">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2024 Loopar. Todos los derechos reservados.
+              © 2026 Regaliz. Todos los derechos reservados.
             </p>
             <p className="text-sm text-muted-foreground">
               Hecho con ❤️ para crear recuerdos mágicos

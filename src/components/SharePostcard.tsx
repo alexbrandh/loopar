@@ -166,8 +166,8 @@ export function SharePostcard({ postcardId, title, className }: SharePostcardPro
             <Label>Código QR</Label>
             <div className="flex flex-col items-center space-y-3">
               {isGeneratingQR ? (
-                <div className="w-64 h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="w-64 h-64 bg-muted rounded-lg flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
               ) : qrCodeUrl ? (
                 <Image
@@ -179,8 +179,8 @@ export function SharePostcard({ postcardId, title, className }: SharePostcardPro
                   unoptimized
                 />
               ) : (
-                <div className="w-64 h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <QrCode className="h-12 w-12 text-gray-400" />
+                <div className="w-64 h-64 bg-muted rounded-lg flex items-center justify-center">
+                  <QrCode className="h-12 w-12 text-muted-foreground/50" />
                 </div>
               )}
               
@@ -206,7 +206,7 @@ export function SharePostcard({ postcardId, title, className }: SharePostcardPro
           </div>
 
           {/* Instrucciones */}
-          <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+          <div className="text-sm text-muted-foreground bg-primary/5 p-3 rounded-lg">
             <p className="font-medium mb-1">💡 Cómo usar:</p>
             <ul className="list-disc list-inside space-y-1 text-xs">
               <li>Comparte el enlace o código QR con otros</li>

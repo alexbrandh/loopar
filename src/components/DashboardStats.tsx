@@ -1,9 +1,9 @@
 'use client';
 
 import React, { memo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, Users, Calendar, TrendingUp } from 'lucide-react';
+import { BarChart3, Calendar, TrendingUp, Layers } from 'lucide-react';
 import type { Postcard } from '@/types/database';
 
 interface DashboardStatsProps {
@@ -36,70 +36,58 @@ const DashboardStats = memo(({ postcards }: DashboardStatsProps) => {
   }, [postcards]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Postales</CardTitle>
-          <BarChart3 className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.total}</div>
-          <p className="text-xs text-muted-foreground">
-            {stats.ready} listas para AR
-          </p>
+    <div className="grid grid-cols-4 gap-2 sm:gap-3 md:gap-4 mb-6 md:mb-8">
+      {/* Total Postales */}
+      <Card className="relative overflow-hidden border-border bg-linear-to-br from-card to-primary/10 hover:shadow-md transition-shadow">
+        <CardContent className="p-2 sm:p-3 md:p-4">
+          <div className="flex flex-col items-center text-center gap-1 sm:gap-2">
+            <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg sm:rounded-xl bg-primary/20">
+              <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-primary" />
+            </div>
+            <p className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">{stats.total}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Postales</p>
+          </div>
         </CardContent>
       </Card>
       
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Esta Semana</CardTitle>
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.thisWeek}</div>
-          <p className="text-xs text-muted-foreground">
-            Nuevas postales creadas
-          </p>
+      {/* Esta Semana */}
+      <Card className="relative overflow-hidden border-border bg-linear-to-br from-card to-ring/10 hover:shadow-md transition-shadow">
+        <CardContent className="p-2 sm:p-3 md:p-4">
+          <div className="flex flex-col items-center text-center gap-1 sm:gap-2">
+            <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg sm:rounded-xl bg-ring/20">
+              <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-ring" />
+            </div>
+            <p className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">{stats.thisWeek}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Semana</p>
+          </div>
         </CardContent>
       </Card>
       
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Tasa de Éxito</CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.successRate}%</div>
-          <p className="text-xs text-muted-foreground">
-            Postales procesadas exitosamente
-          </p>
+      {/* Tasa de Éxito */}
+      <Card className="relative overflow-hidden border-border bg-linear-to-br from-card to-chart-5/10 hover:shadow-md transition-shadow">
+        <CardContent className="p-2 sm:p-3 md:p-4">
+          <div className="flex flex-col items-center text-center gap-1 sm:gap-2">
+            <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg sm:rounded-xl bg-chart-5/20">
+              <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-chart-5" />
+            </div>
+            <p className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">{stats.successRate}%</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Éxito</p>
+          </div>
         </CardContent>
       </Card>
       
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Estado</CardTitle>
-          <Users className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 mb-2">
-            <Badge variant="default" className="text-xs">
+      {/* Estado */}
+      <Card className="relative overflow-hidden border-border bg-linear-to-br from-card to-chart-3/10 hover:shadow-md transition-shadow">
+        <CardContent className="p-2 sm:p-3 md:p-4">
+          <div className="flex flex-col items-center text-center gap-1 sm:gap-2">
+            <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg sm:rounded-xl bg-chart-3/20">
+              <Layers className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-chart-3" />
+            </div>
+            <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] sm:text-[10px] md:text-xs px-1.5 sm:px-2 py-0.5">
               {stats.ready} Listas
             </Badge>
-            {stats.processing > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {stats.processing} Procesando
-              </Badge>
-            )}
-            {stats.errors > 0 && (
-              <Badge variant="destructive" className="text-xs">
-                {stats.errors} Errores
-              </Badge>
-            )}
+            <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Estado</p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Distribución por estado
-          </p>
         </CardContent>
       </Card>
     </div>

@@ -28,6 +28,9 @@ import {
   WifiOff
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ImageCropper, getCroppedImg } from '@/components/ui/image-cropper';
+import FileUpload from '@/components/ui/file-upload';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useUpload } from '@/hooks/useUpload';
 import { usePostcards } from '@/hooks/usePostcards';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
@@ -46,8 +49,6 @@ interface FileWithPreview {
   };
 }
 
-
-
 export default function NewPostcard() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
@@ -60,6 +61,8 @@ export default function NewPostcard() {
   const [description, setDescription] = useState('');
   const [imageFile, setImageFile] = useState<FileWithPreview | null>(null);
   const [videoFile, setVideoFile] = useState<FileWithPreview | null>(null);
+  const [showImageCropper, setShowImageCropper] = useState(false);
+  const [rawImageForCrop, setRawImageForCrop] = useState<string | null>(null);
 
   // Estados para progreso detallado
   const [currentStep, setCurrentStep] = useState<'idle' | 'converting-video' | 'creating' | 'uploading-image' | 'uploading-video' | 'generating-nft' | 'uploading-nft' | 'completed'>('idle');
@@ -216,10 +219,6 @@ export default function NewPostcard() {
     }
   }, [uploads]);
 
-
-
-
-
   const validateVideoDuration = useCallback((file: File): Promise<number> => {
     return new Promise((resolve) => {
       const video = document.createElement('video');
@@ -239,8 +238,8 @@ export default function NewPostcard() {
     // Validate file type
     if (!file.type.startsWith('image/')) {
       toast({
-        title: 'Invalid File Type',
-        description: 'Please upload an image file.',
+        title: 'Tipo de archivo inválido',
+        description: 'Por favor sube un archivo de imagen.',
         variant: 'destructive',
       });
       return;
@@ -249,8 +248,8 @@ export default function NewPostcard() {
     // Validate file size
     if (file.size > MAX_IMAGE_SIZE) {
       toast({
-        title: 'File Too Large',
-        description: `Image must be smaller than ${MAX_IMAGE_SIZE / (1024 * 1024)}MB.`,
+        title: 'Archivo muy grande',
+        description: `La imagen debe ser menor a ${MAX_IMAGE_SIZE / (1024 * 1024)}MB.`,
         variant: 'destructive',
       });
       return;
@@ -262,38 +261,16 @@ export default function NewPostcard() {
       const imageUrl = URL.createObjectURL(file);
 
       img.onload = () => {
-        // Validate image resolution
-        if (img.width < MIN_IMAGE_RESOLUTION || img.height < MIN_IMAGE_RESOLUTION) {
-          URL.revokeObjectURL(imageUrl);
-          toast({
-            title: 'Image Resolution Too Low',
-            description: `Image must be at least ${MIN_IMAGE_RESOLUTION}x${MIN_IMAGE_RESOLUTION}px for good AR tracking.`,
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        const preview = URL.createObjectURL(file);
-        setImageFile({
-          file,
-          preview,
-          type: 'image',
-          metadata: { width: img.width, height: img.height }
-        });
-
-        toast({
-          title: 'Image Uploaded',
-          description: 'Your image has been uploaded successfully.',
-        });
-
-        URL.revokeObjectURL(imageUrl);
+        // Show cropper instead of directly setting the file
+        setRawImageForCrop(imageUrl);
+        setShowImageCropper(true);
       };
 
       img.onerror = () => {
         URL.revokeObjectURL(imageUrl);
         toast({
-          title: 'Invalid Image',
-          description: 'Failed to process the image file.',
+          title: 'Imagen inválida',
+          description: 'Error al procesar el archivo de imagen.',
           variant: 'destructive',
         });
       };
@@ -302,11 +279,54 @@ export default function NewPostcard() {
     } catch (error) {
       console.error('Error processing image:', error);
       toast({
-        title: 'Upload Error',
-        description: 'Failed to process the image file.',
+        title: 'Error de carga',
+        description: 'Error al procesar el archivo de imagen.',
         variant: 'destructive',
       });
     }
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob, croppedUrl: string) => {
+    // Create a File from the Blob
+    const croppedFile = new File([croppedBlob], 'cropped-image.png', { type: 'image/png' });
+    
+    // Get dimensions of cropped image
+    const img = document.createElement('img');
+    img.src = croppedUrl;
+    await new Promise(resolve => img.onload = resolve);
+    
+    // Check minimum resolution after crop
+    if (img.width < MIN_IMAGE_RESOLUTION || img.height < MIN_IMAGE_RESOLUTION) {
+      toast({
+        title: 'Resolución muy baja',
+        description: `La imagen recortada debe ser al menos ${MIN_IMAGE_RESOLUTION}x${MIN_IMAGE_RESOLUTION}px para buen tracking AR.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setImageFile({
+      file: croppedFile,
+      preview: croppedUrl,
+      type: 'image',
+      metadata: { width: img.width, height: img.height }
+    });
+    
+    setShowImageCropper(false);
+    setRawImageForCrop(null);
+    
+    toast({
+      title: 'Imagen recortada',
+      description: 'Tu imagen ha sido recortada exitosamente.',
+    });
+  };
+
+  const handleCropCancel = () => {
+    if (rawImageForCrop) {
+      URL.revokeObjectURL(rawImageForCrop);
+    }
+    setShowImageCropper(false);
+    setRawImageForCrop(null);
   };
 
   const handleVideoDrop = async (files: FileList) => {
@@ -542,7 +562,7 @@ export default function NewPostcard() {
       <MainLayout>
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         </div>
       </MainLayout>
@@ -552,6 +572,23 @@ export default function NewPostcard() {
   return (
     <TooltipProvider>
       <MainLayout>
+        {/* Image Cropper Modal */}
+        {showImageCropper && rawImageForCrop && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="max-h-[90vh] overflow-y-auto">
+              <ImageCropper
+                initialImage={rawImageForCrop}
+                onCropComplete={handleCropComplete}
+                onCancel={handleCropCancel}
+                minWidth={MIN_IMAGE_RESOLUTION}
+                minHeight={MIN_IMAGE_RESOLUTION}
+                title="Recortar Imagen para Postal AR"
+                description="Selecciona el área de la imagen y la proporción deseada (16:9 o 4:5)"
+              />
+            </div>
+          </div>
+        )}
+
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
@@ -562,8 +599,8 @@ export default function NewPostcard() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Crear Nueva Postal Loopar</h1>
-              <p className="text-gray-600 mt-1">
+              <h1 className="text-3xl font-bold text-foreground">Crear Nueva Postal Regaliz</h1>
+              <p className="text-muted-foreground mt-1">
                 Sube una imagen y video para crear tu experiencia AR interactiva
               </p>
             </div>
@@ -579,83 +616,94 @@ export default function NewPostcard() {
             </Alert>
           )}
 
-          {/* Indicador de progreso detallado */}
-          {currentStep !== 'idle' && (
-            <Card className="mb-6">
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">
-                      {currentStep === 'creating' && 'Creando postal...'}
-                      {currentStep === 'uploading-image' && 'Subiendo imagen...'}
-                      {currentStep === 'uploading-video' && 'Subiendo video...'}
-                      {currentStep === 'generating-nft' && 'Generando NFT...'}
-                      {currentStep === 'completed' && '¡Completado!'}
-                    </h3>
-                    {canCancel && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCancelOperation}
-                        disabled={isCancelling}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        {isCancelling ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Cancelando...
-                          </>
-                        ) : (
-                          <>
-                            <X className="mr-2 h-4 w-4" />
-                            Cancelar
-                          </>
+          <AnimatePresence>
+            {currentStep !== 'idle' && (
+              <motion.div
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                className="mb-6"
+              >
+                <Card className="border-primary/20 bg-secondary/50 shadow-sm hover:shadow-md transition-all">
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {currentStep !== 'completed' ? (
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            >
+                              <Loader2 className="h-5 w-5 text-primary" />
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                            >
+                              <CheckCircle className="h-5 w-5 text-emerald-500" />
+                            </motion.div>
+                          )}
+                          <div>
+                            <h3 className="font-semibold text-foreground">
+                              {currentStep === 'converting-video' && 'Convirtiendo video...'}
+                              {currentStep === 'creating' && 'Creando postal...'}
+                              {currentStep === 'uploading-image' && 'Subiendo imagen...'}
+                              {currentStep === 'uploading-video' && 'Subiendo video...'}
+                              {currentStep === 'generating-nft' && 'Generando experiencia AR...'}
+                              {currentStep === 'completed' && '¡Completado!'}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {currentStep === 'creating' && 'Configurando tu postal...'}
+                              {currentStep === 'uploading-image' && 'Procesando imagen...'}
+                              {currentStep === 'uploading-video' && 'Procesando video...'}
+                              {currentStep === 'generating-nft' && 'Creando experiencia AR...'}
+                              {currentStep === 'completed' && 'Tu postal está lista'}
+                              {currentStep === 'converting-video' && 'Optimizando formato...'}
+                            </p>
+                          </div>
+                        </div>
+                        {canCancel && currentStep !== 'completed' && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelOperation}
+                            disabled={isCancelling}
+                            className="text-destructive hover:text-destructive/80"
+                          >
+                            {isCancelling ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <X className="h-4 w-4" />
+                            )}
+                          </Button>
                         )}
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>Progreso general</span>
-                      <span>{Math.round(overallProgress)}%</span>
-                    </div>
-                    <Progress value={overallProgress} className="w-full" />
-                  </div>
-
-                  {/* Progreso específico de subida */}
-                  {(currentStep === 'uploading-image' || currentStep === 'uploading-video') && uploadProgress > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm text-gray-600">
-                        <span>
-                          {currentStep === 'uploading-image' ? 'Subiendo imagen' : 'Subiendo video'}
-                        </span>
-                        <span>{Math.round(uploadProgress)}%</span>
                       </div>
-                      <Progress value={uploadProgress} className="w-full" />
-                    </div>
-                  )}
 
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    {currentStep !== 'completed' && (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    )}
-                    {currentStep === 'completed' && (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    )}
-                    <span>
-                      {currentStep === 'creating' && 'Configurando tu postal...'}
-                      {currentStep === 'uploading-image' && 'Procesando imagen...'}
-                      {currentStep === 'uploading-video' && 'Procesando video...'}
-                      {currentStep === 'generating-nft' && 'Creando experiencia AR...'}
-                      {currentStep === 'completed' && 'Tu postal está lista'}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                      {/* Progress bar animada */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>Progreso</span>
+                          <span className="font-medium">{Math.round(overallProgress)}%</span>
+                        </div>
+                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${overallProgress}%` }}
+                            transition={{ duration: 0.4, type: "spring", stiffness: 100 }}
+                            className={`h-full rounded-full ${overallProgress < 100 ? 'bg-primary' : 'bg-emerald-500'}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
@@ -663,7 +711,7 @@ export default function NewPostcard() {
               <CardHeader>
                 <CardTitle>Información Básica</CardTitle>
                 <CardDescription>
-                  Dale a tu postal Loopar un título y descripción
+                  Dale a tu postal Regaliz un título y descripción
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -685,7 +733,7 @@ export default function NewPostcard() {
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Describe tu postal Loopar (opcional)"
+                    placeholder="Describe tu postal Regaliz (opcional)"
                     disabled={currentStep !== 'idle'}
                     rows={3}
                   />
@@ -701,7 +749,7 @@ export default function NewPostcard() {
                   Imagen Objetivo AR *
                   <Tooltip>
                     <TooltipTrigger>
-                      <HelpCircle className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                      <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Esta imagen será detectada por la cámara para activar el contenido AR. Usa imágenes con buen contraste, detalles únicos y evita superficies brillantes o reflectantes.</p>
@@ -713,77 +761,29 @@ export default function NewPostcard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {!imageFile ? (
-                  <div
-                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${currentStep !== 'idle'
-                        ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                        : dragActive === 'image'
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                    onDragOver={currentStep === 'idle' ? (e) => handleDragOver(e, 'image') : undefined}
-                    onDragLeave={currentStep === 'idle' ? handleDragLeave : undefined}
-                    onDrop={currentStep === 'idle' ? (e) => handleDrop(e, 'image') : undefined}
-                  >
-                    <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <p className="text-lg font-medium text-gray-900 mb-2">
-                      Suelta tu imagen aquí, o haz clic para explorar
-                    </p>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Soporta archivos JPG, PNG
-                    </p>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => e.target.files && handleImageDrop(e.target.files)}
-                      className="hidden"
-                      id="image-upload"
-                      disabled={currentStep !== 'idle'}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={currentStep !== 'idle'}
-                      onClick={() => document.getElementById('image-upload')?.click()}
-                    >
-                      Elegir Imagen
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="relative">
-                      <Image
-                        src={imageFile.preview}
-                        alt="Preview"
-                        width={400}
-                        height={300}
-                        className="w-full max-w-md mx-auto rounded-lg shadow-md object-cover"
-                        unoptimized
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                        onClick={() => removeFile('image')}
-                        disabled={currentStep !== 'idle'}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="text-center text-sm text-gray-600 space-y-1">
-                      <p className="font-medium">{imageFile.file.name}</p>
-                      <div className="flex justify-center gap-4 text-xs">
-                        <span>{(imageFile.file.size / 1024 / 1024).toFixed(2)} MB</span>
-                        {imageFile.metadata && (
-                          <span>{imageFile.metadata.width}x{imageFile.metadata.height}px</span>
-                        )}
-                        <span className="text-green-600 font-medium">✓ Válida para AR</span>
-                      </div>
-                    </div>
-
-                  </div>
-                )}
+                <FileUpload
+                  type="image"
+                  accept="image/*"
+                  maxSize={MAX_IMAGE_SIZE}
+                  onFileSelect={(file) => {
+                    const fileList = new DataTransfer();
+                    fileList.items.add(file);
+                    handleImageDrop(fileList.files);
+                  }}
+                  onFileRemove={() => removeFile('image')}
+                  file={imageFile ? {
+                    name: imageFile.file.name,
+                    size: imageFile.file.size,
+                    type: imageFile.file.type,
+                    preview: imageFile.preview,
+                  } : null}
+                  isUploading={currentStep === 'uploading-image'}
+                  uploadProgress={currentStep === 'uploading-image' ? uploadProgress : undefined}
+                  title="Sube tu imagen"
+                  description="Esta imagen activará tu contenido AR"
+                  supportedFormats="JPG, PNG • Mín. 800x800px"
+                  disabled={currentStep !== 'idle'}
+                />
               </CardContent>
             </Card>
 
@@ -795,7 +795,7 @@ export default function NewPostcard() {
                   Contenido de Video AR *
                   <Tooltip>
                     <TooltipTrigger>
-                      <HelpCircle className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                      <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Este video aparecerá flotando sobre la imagen cuando sea detectada. Mantén el video corto (máx. 90 segundos) y con buena calidad para la mejor experiencia AR.</p>
@@ -807,85 +807,40 @@ export default function NewPostcard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {!videoFile ? (
-                  <div
-                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${currentStep !== 'idle'
-                        ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                        : dragActive === 'video'
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                    onDragOver={currentStep === 'idle' ? (e) => handleDragOver(e, 'video') : undefined}
-                    onDragLeave={currentStep === 'idle' ? handleDragLeave : undefined}
-                    onDrop={currentStep === 'idle' ? (e) => handleDrop(e, 'video') : undefined}
-                  >
-                    <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <p className="text-lg font-medium text-gray-900 mb-2">
-                      Suelta tu video aquí, o haz clic para explorar
-                    </p>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Soporta archivos MP4, MOV
-                    </p>
-                    <Input
-                      type="file"
-                      accept="video/*"
-                      onChange={(e) => e.target.files && handleVideoDrop(e.target.files)}
-                      className="hidden"
-                      id="video-upload"
-                      disabled={currentStep !== 'idle'}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={currentStep !== 'idle'}
-                      onClick={() => document.getElementById('video-upload')?.click()}
-                    >
-                      Elegir Video
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="relative">
-                      <video
-                        src={videoFile.preview}
-                        controls
-                        className="w-full max-w-md mx-auto rounded-lg shadow-md"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                        onClick={() => removeFile('video')}
-                        disabled={currentStep !== 'idle'}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="text-center text-sm text-gray-600 space-y-1">
-                      <p className="font-medium">{videoFile.file.name}</p>
-                      <div className="flex justify-center gap-4 text-xs">
-                        <span>{(videoFile.file.size / 1024 / 1024).toFixed(2)} MB</span>
-                        {videoFile.metadata?.duration && (
-                          <span>{Math.round(videoFile.metadata.duration)}s duración</span>
-                        )}
-                        <span className="text-green-600 font-medium">✓ Válido para AR</span>
-                      </div>
-                    </div>
-
-                  </div>
-                )}
+                <FileUpload
+                  type="video"
+                  accept="video/*"
+                  maxSize={MAX_VIDEO_SIZE}
+                  onFileSelect={(file) => {
+                    const fileList = new DataTransfer();
+                    fileList.items.add(file);
+                    handleVideoDrop(fileList.files);
+                  }}
+                  onFileRemove={() => removeFile('video')}
+                  file={videoFile ? {
+                    name: videoFile.file.name,
+                    size: videoFile.file.size,
+                    type: videoFile.file.type,
+                    preview: videoFile.preview,
+                  } : null}
+                  isUploading={currentStep === 'uploading-video'}
+                  uploadProgress={currentStep === 'uploading-video' ? uploadProgress : undefined}
+                  title="Sube tu video"
+                  description="Este video aparecerá sobre la imagen AR"
+                  supportedFormats="MP4, MOV • Máx. 90 segundos"
+                  disabled={currentStep !== 'idle'}
+                />
               </CardContent>
             </Card>
 
             {/* Requirements Info */}
-            <Card className="border-blue-200 bg-blue-50">
+            <Card className="border-primary/20 bg-primary/5">
               <CardContent className="pt-6">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <AlertCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                   <div className="space-y-2">
-                    <h4 className="font-medium text-blue-900">Requisitos para la Mejor Experiencia AR</h4>
-                    <ul className="text-sm text-blue-800 space-y-1">
+                    <h4 className="font-medium text-foreground">Requisitos para la Mejor Experiencia AR</h4>
+                    <ul className="text-sm text-foreground/80 space-y-1">
                       <li>• Usa imágenes de alto contraste con detalles claros</li>
                       <li>• Evita superficies reflectantes o transparentes</li>
                       <li>• Asegura buena iluminación al tomar fotos</li>
@@ -897,41 +852,76 @@ export default function NewPostcard() {
             </Card>
 
             {/* Progress Bar - Shown at bottom when creating */}
-            {currentStep !== 'idle' && (
-              <Card className="border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 sticky bottom-4">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      {currentStep !== 'completed' ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                      ) : (
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                      )}
-                      <div>
-                        <h3 className="font-semibold text-gray-900">
-                          {currentStep === 'converting-video' && 'Convirtiendo video...'}
-                          {currentStep === 'creating' && 'Creando postal...'}
-                          {currentStep === 'uploading-image' && 'Subiendo imagen...'}
-                          {currentStep === 'uploading-video' && 'Subiendo video...'}
-                          {currentStep === 'generating-nft' && 'Generando experiencia AR...'}
-                          {currentStep === 'completed' && '¡Postal creada!'}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          {overallProgress < 100 ? `~${Math.max(1, Math.round((100 - overallProgress) / 10))}s restantes` : 'Redirigiendo...'}
-                        </p>
+            <AnimatePresence>
+              {currentStep !== 'idle' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 50, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 50, scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                  className="sticky bottom-4"
+                >
+                  <Card className="border-primary/20 bg-secondary/50 shadow-lg backdrop-blur">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          {currentStep !== 'completed' ? (
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            >
+                              <Loader2 className="h-5 w-5 text-primary" />
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                            >
+                              <CheckCircle className="h-5 w-5 text-emerald-500" />
+                            </motion.div>
+                          )}
+                          <div>
+                            <h3 className="font-semibold text-foreground">
+                              {currentStep === 'converting-video' && 'Convirtiendo video...'}
+                              {currentStep === 'creating' && 'Creando postal...'}
+                              {currentStep === 'uploading-image' && 'Subiendo imagen...'}
+                              {currentStep === 'uploading-video' && 'Subiendo video...'}
+                              {currentStep === 'generating-nft' && 'Generando experiencia AR...'}
+                              {currentStep === 'completed' && '¡Postal creada!'}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {overallProgress < 100 ? `~${Math.max(1, Math.round((100 - overallProgress) / 10))}s restantes` : 'Redirigiendo...'}
+                            </p>
+                          </div>
+                        </div>
+                        {canCancel && currentStep !== 'completed' && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelOperation}
+                            disabled={isCancelling}
+                            className="text-destructive hover:text-destructive/80"
+                          >
+                            {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                          </Button>
+                        )}
                       </div>
-                    </div>
-                    {canCancel && currentStep !== 'completed' && (
-                      <Button type="button" variant="outline" size="sm" onClick={handleCancelOperation} disabled={isCancelling} className="text-red-600">
-                        {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                      </Button>
-                    )}
-                  </div>
-                  <Progress value={overallProgress} className="h-3" />
-                  <p className="text-xs text-gray-500 mt-2 text-right">{Math.round(overallProgress)}% completado</p>
-                </CardContent>
-              </Card>
-            )}
+                      <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${overallProgress}%` }}
+                          transition={{ duration: 0.4, type: "spring", stiffness: 100 }}
+                          className={`h-full rounded-full ${overallProgress < 100 ? 'bg-primary' : 'bg-emerald-500'}`}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2 text-right font-medium">{Math.round(overallProgress)}% completado</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Submit Button */}
             <div className="flex justify-end gap-4">

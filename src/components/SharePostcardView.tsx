@@ -63,9 +63,9 @@ export function SharePostcardView({ postcard }: SharePostcardViewProps) {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <Link href="/" className="flex items-center text-blue-600 hover:text-blue-700">
+        <Link href="/" className="flex items-center text-primary hover:text-primary/80">
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver a Loopar
+          Volver a Regaliz
         </Link>
         <Button variant="outline" onClick={handleShare}>
           <Share2 className="h-4 w-4 mr-2" />
@@ -92,7 +92,7 @@ export function SharePostcardView({ postcard }: SharePostcardViewProps) {
           <div className="grid md:grid-cols-2 gap-8">
             {/* Imagen */}
             <div className="space-y-4">
-              <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+              <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
                 {postcard.image_url && isValidImageUrl(postcard.image_url) && !imageError ? (
                   <Image
                     src={postcard.image_url}
@@ -103,12 +103,12 @@ export function SharePostcardView({ postcard }: SharePostcardViewProps) {
                     onError={() => setImageError(true)}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground/50">
                     <QrCode className="h-16 w-16" />
                   </div>
                 )}
               </div>
-              <p className="text-sm text-gray-600 text-center">
+              <p className="text-sm text-muted-foreground text-center">
                 📱 Usa esta imagen como marcador AR
               </p>
             </div>
@@ -117,7 +117,7 @@ export function SharePostcardView({ postcard }: SharePostcardViewProps) {
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold mb-3">¿Cómo funciona?</h3>
-                <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">
+                <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
                   <li>Haz clic en &quot;Abrir en AR&quot; desde tu móvil</li>
                   <li>Permite el acceso a la cámara</li>
                   <li>Apunta la cámara hacia la imagen de arriba</li>
@@ -128,7 +128,7 @@ export function SharePostcardView({ postcard }: SharePostcardViewProps) {
               <div className="space-y-3">
                 <Button 
                   onClick={openAR}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  className="w-full bg-linear-to-r from-primary to-chart-3 hover:from-primary/90 hover:to-chart-3/90"
                   size="lg"
                 >
                   <Camera className="h-5 w-5 mr-2" />
@@ -146,9 +146,9 @@ export function SharePostcardView({ postcard }: SharePostcardViewProps) {
               </div>
 
               {/* Información adicional */}
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">💡 Consejos:</h4>
-                <ul className="text-sm text-blue-800 space-y-1">
+              <div className="bg-primary/5 p-4 rounded-lg">
+                <h4 className="font-medium text-foreground mb-2">💡 Consejos:</h4>
+                <ul className="text-sm text-foreground/80 space-y-1">
                   <li>• Usa buena iluminación</li>
                   <li>• Mantén la imagen plana y visible</li>
                   <li>• Mueve el dispositivo lentamente</li>
@@ -161,10 +161,10 @@ export function SharePostcardView({ postcard }: SharePostcardViewProps) {
       </Card>
 
       {/* Footer */}
-      <div className="text-center text-gray-500 text-sm">
-        <p>Creado con ❤️ usando Loopar AR</p>
+      <div className="text-center text-muted-foreground text-sm">
+        <p>Creado con ❤️ usando Regaliz AR</p>
         <p className="mt-1">
-          <Link href="/" className="text-blue-600 hover:text-blue-700">
+          <Link href="/" className="text-primary hover:text-primary/80">
             Crea tu propia postcard AR
           </Link>
         </p>

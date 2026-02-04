@@ -803,7 +803,7 @@ export async function validateUrlAccessibility(
         method: 'HEAD',
         signal: controller.signal,
         headers: {
-          'User-Agent': 'Loopar-Validator/1.0'
+          'User-Agent': 'Regaliz-Validator/1.0'
         }
       });
       

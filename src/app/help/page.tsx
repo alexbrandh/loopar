@@ -23,7 +23,7 @@ import Link from 'next/link';
 export default function HelpPage() {
   const steps = [
     {
-      icon: <Upload className="h-8 w-8 text-blue-600" />,
+      icon: <Upload className="h-8 w-8 text-primary" />,
       title: "1. Sube tu Imagen Objetivo",
       description: "Selecciona una imagen con buen contraste y detalles únicos. Evita superficies brillantes o muy lisas.",
       tips: [
@@ -33,7 +33,7 @@ export default function HelpPage() {
       ]
     },
     {
-      icon: <Video className="h-8 w-8 text-green-600" />,
+      icon: <Video className="h-8 w-8 text-ring" />,
       title: "2. Añade tu Video AR",
       description: "Sube el video que aparecerá flotando sobre tu imagen cuando sea detectada por la cámara.",
       tips: [
@@ -43,7 +43,7 @@ export default function HelpPage() {
       ]
     },
     {
-      icon: <CheckCircle className="h-8 w-8 text-purple-600" />,
+      icon: <CheckCircle className="h-8 w-8 text-chart-3" />,
       title: "3. Procesamiento AR",
       description: "Nuestro sistema genera automáticamente los descriptores NFT necesarios para el seguimiento AR.",
       tips: [
@@ -53,7 +53,7 @@ export default function HelpPage() {
       ]
     },
     {
-      icon: <Share2 className="h-8 w-8 text-orange-600" />,
+      icon: <Share2 className="h-8 w-8 text-chart-4" />,
       title: "4. Comparte tu Postal",
       description: "Una vez procesada, comparte tu postal AR con códigos QR o enlaces directos.",
       tips: [
@@ -67,7 +67,7 @@ export default function HelpPage() {
   const faqs = [
     {
       question: "¿Qué dispositivos son compatibles?",
-      answer: "Loopar funciona en cualquier dispositivo con cámara y navegador web moderno. Recomendamos usar smartphones para la mejor experiencia AR."
+      answer: "Regaliz funciona en cualquier dispositivo con cámara y navegador web moderno. Recomendamos usar smartphones para la mejor experiencia AR."
     },
     {
       question: "¿Por qué mi imagen no funciona bien para AR?",
@@ -92,9 +92,9 @@ export default function HelpPage() {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Centro de Ayuda</h1>
-          <p className="text-xl text-gray-600 mb-6">
-            Aprende a crear experiencias AR increíbles con Loopar
+          <h1 className="text-4xl font-bold text-foreground mb-4">Centro de Ayuda</h1>
+          <p className="text-xl text-muted-foreground mb-6">
+            Aprende a crear experiencias AR increíbles con Regaliz
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/dashboard/new">
@@ -116,7 +116,7 @@ export default function HelpPage() {
         <Card className="mb-12">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Play className="h-6 w-6 text-blue-600" />
+              <Play className="h-6 w-6 text-primary" />
               Guía Rápida de Inicio
             </CardTitle>
             <CardDescription>
@@ -128,16 +128,16 @@ export default function HelpPage() {
               {steps.map((step, index) => (
                 <div key={index} className="flex gap-4">
                   <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
                       {step.icon}
                     </div>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{step.title}</h3>
-                    <p className="text-gray-600 mb-3">{step.description}</p>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">{step.title}</h3>
+                    <p className="text-muted-foreground mb-3">{step.description}</p>
                     <div className="space-y-1">
                       {step.tips.map((tip, tipIndex) => (
-                        <div key={tipIndex} className="flex items-start gap-2 text-sm text-gray-500">
+                        <div key={tipIndex} className="flex items-start gap-2 text-sm text-muted-foreground/70">
                           <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                           <span>{tip}</span>
                         </div>
@@ -146,7 +146,7 @@ export default function HelpPage() {
                   </div>
                   {index < steps.length - 1 && (
                     <div className="flex-shrink-0 flex items-center">
-                      <ArrowRight className="h-5 w-5 text-gray-400" />
+                      <ArrowRight className="h-5 w-5 text-muted-foreground/50" />
                     </div>
                   )}
                 </div>
@@ -160,12 +160,12 @@ export default function HelpPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Smartphone className="h-5 w-5 text-blue-600" />
+                <Smartphone className="h-5 w-5 text-primary" />
                 Experiencia AR Móvil
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600 mb-4">
+              <p className="text-muted-foreground mb-4">
                 Tus postales funcionan en cualquier smartphone con cámara. Los usuarios solo necesitan abrir el enlace en su navegador.
               </p>
               <div className="space-y-2">
@@ -179,12 +179,12 @@ export default function HelpPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <QrCode className="h-5 w-5 text-green-600" />
+                <QrCode className="h-5 w-5 text-ring" />
                 Compartir Fácil
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600 mb-4">
+              <p className="text-muted-foreground mb-4">
                 Genera códigos QR automáticamente y comparte enlaces directos en redes sociales o mensajería.
               </p>
               <div className="space-y-2">
@@ -200,19 +200,19 @@ export default function HelpPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <HelpCircle className="h-6 w-6 text-purple-600" />
+              <HelpCircle className="h-6 w-6 text-chart-3" />
               Preguntas Frecuentes
             </CardTitle>
             <CardDescription>
-              Respuestas a las dudas más comunes sobre Loopar
+              Respuestas a las dudas más comunes sobre Regaliz
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
               {faqs.map((faq, index) => (
                 <div key={index}>
-                  <h3 className="font-semibold text-gray-900 mb-2">{faq.question}</h3>
-                  <p className="text-gray-600">{faq.answer}</p>
+                  <h3 className="font-semibold text-foreground mb-2">{faq.question}</h3>
+                  <p className="text-muted-foreground">{faq.answer}</p>
                   {index < faqs.length - 1 && <Separator className="mt-6" />}
                 </div>
               ))}
@@ -221,9 +221,9 @@ export default function HelpPage() {
         </Card>
 
         {/* Call to Action */}
-        <div className="text-center mt-12 p-8 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">¿Listo para comenzar?</h2>
-          <p className="text-gray-600 mb-6">
+        <div className="text-center mt-12 p-8 bg-linear-to-r from-primary/10 to-chart-3/10 rounded-lg">
+          <h2 className="text-2xl font-bold text-foreground mb-4">¿Listo para comenzar?</h2>
+          <p className="text-muted-foreground mb-6">
             Crea tu primera postal AR y comparte experiencias mágicas que cobran vida
           </p>
           <Link href="/dashboard/new">

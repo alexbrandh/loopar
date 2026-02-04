@@ -1,104 +1,109 @@
-import { SignInButton, SignedIn, SignedOut } from '@clerk/nextjs';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, Sparkles, Share2, Zap } from 'lucide-react';
+'use client';
+
+import { Camera, Share2, Zap, ArrowRight } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
-import Link from 'next/link';
+import { AnimatedHero } from '@/components/ui/animated-hero';
+import { motion } from 'framer-motion';
+
+const steps = [
+  {
+    number: "01",
+    icon: Camera,
+    title: "Sube tu Contenido",
+    description: "Elige una foto como objetivo AR y sube un video que se reproducirá cuando se escanee la foto.",
+    color: "blue",
+    gradient: "from-primary to-ring"
+  },
+  {
+    number: "02",
+    icon: Zap,
+    title: "Procesamiento IA",
+    description: "Nuestra IA genera automáticamente marcadores de seguimiento AR desde tu foto para un reconocimiento perfecto.",
+    color: "emerald",
+    gradient: "from-ring to-chart-5"
+  },
+  {
+    number: "03",
+    icon: Share2,
+    title: "Comparte y Experimenta",
+    description: "Comparte el enlace de tu postal AR. Cualquiera puede apuntar su cámara a la foto para ver tu video cobrar vida.",
+    color: "violet",
+    gradient: "from-chart-3 to-chart-2"
+  }
+];
 
 export default function Home() {
   return (
     <MainLayout>
-      <div className="bg-gradient-to-br from-blue-50 via-white to-cyan-50">
+      <div className="min-h-screen">
 
-        {/* Hero Section */}
-        <section className="container mx-auto px-4 py-20 text-center">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-5xl font-bold text-gray-900 mb-6">
-              Dale Vida a tus{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
-                Fotos
-              </span>
-            </h2>
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              Crea postales AR mágicas combinando tus fotos favoritas con videos. 
-              Comparte recuerdos que cobran vida cuando se ven a través de una cámara.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <SignedOut>
-                <SignInButton mode="modal">
-                  <Button size="lg" className="text-lg px-8 py-3">
-                    <Camera className="mr-2 h-5 w-5" />
-                    Comenzar Gratis
-                  </Button>
-                </SignInButton>
-              </SignedOut>
-              <SignedIn>
-                <Link href="/dashboard/new">
-                  <Button size="lg" className="text-lg px-8 py-3">
-                    <Camera className="mr-2 h-5 w-5" />
-                    Crea tu Primera Postal
-                  </Button>
-                </Link>
-              </SignedIn>
-              <Button variant="outline" size="lg" className="text-lg px-8 py-3">
-                <Sparkles className="mr-2 h-5 w-5" />
-                Ver Demo
-              </Button>
-            </div>
-          </div>
-        </section>
+        {/* Animated Hero Section */}
+        <AnimatedHero />
 
         {/* Features Section */}
-        <section id="features" className="container mx-auto px-4 py-20">
-          <div className="text-center mb-16">
-            <h3 className="text-3xl font-bold text-gray-900 mb-4">Cómo Funciona</h3>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Crea experiencias AR impresionantes en solo unos pocos pasos simples
-            </p>
-          </div>
+        <section id="features" className="relative py-24 overflow-hidden">
           
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card className="text-center border-0 shadow-lg">
-              <CardHeader>
-                <div className="mx-auto w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                  <Camera className="h-6 w-6 text-blue-600" />
-                </div>
-                <CardTitle className="text-xl">Sube tu Contenido</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-base">
-                  Elige una foto como objetivo AR y sube un video que se reproducirá cuando se escanee la foto.
-                </CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center border-0 shadow-lg">
-              <CardHeader>
-                <div className="mx-auto w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-                  <Zap className="h-6 w-6 text-green-600" />
-                </div>
-                <CardTitle className="text-xl">Procesamiento IA</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-base">
-                  Nuestra IA genera automáticamente marcadores de seguimiento AR desde tu foto para un reconocimiento perfecto.
-                </CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center border-0 shadow-lg">
-              <CardHeader>
-                <div className="mx-auto w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-                  <Share2 className="h-6 w-6 text-purple-600" />
-                </div>
-                <CardTitle className="text-xl">Comparte y Experimenta</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-base">
-                  Comparte el enlace de tu postal AR. Cualquiera puede apuntar su cámara a la foto para ver tu video cobrar vida.
-                </CardDescription>
-              </CardContent>
-            </Card>
+          <div className="container mx-auto px-4">
+            {/* Section Header */}
+            <motion.div 
+              className="text-center mb-20"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+            >
+              <span className="inline-block px-4 py-1.5 mb-6 text-sm font-semibold text-primary bg-primary/10 rounded-full">
+                Simple y Poderoso
+              </span>
+              <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
+                Cómo Funciona
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                Crea experiencias AR impresionantes en solo <span className="text-primary font-semibold">3 pasos simples</span>
+              </p>
+            </motion.div>
+            
+            {/* Steps Grid */}
+            <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              {steps.map((step, index) => (
+                <motion.div
+                  key={step.number}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.15 }}
+                  viewport={{ once: true }}
+                  className="group relative"
+                >
+                  {/* Card */}
+                  <div className="relative h-full bg-card/50 backdrop-blur-sm rounded-3xl p-8 shadow-lg shadow-border/30 border border-border/50 hover:shadow-xl hover:bg-card/70 transition-all duration-300 hover:-translate-y-1">
+                    {/* Step Number */}
+                    <div className="absolute -top-4 -right-4 w-14 h-14 bg-linear-to-br from-foreground to-muted-foreground rounded-2xl flex items-center justify-center shadow-lg">
+                      <span className="text-white font-bold text-lg">{step.number}</span>
+                    </div>
+                    
+                    {/* Icon */}
+                    <div className={`w-16 h-16 mb-6 rounded-2xl bg-linear-to-br ${step.gradient} flex items-center justify-center shadow-lg`}>
+                      <step.icon className="w-8 h-8 text-white" />
+                    </div>
+                    
+                    {/* Content */}
+                    <h3 className="text-xl font-bold text-foreground mb-3">
+                      {step.title}
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {step.description}
+                    </p>
+                    
+                    {/* Arrow connector (hidden on mobile and last item) */}
+                    {index < steps.length - 1 && (
+                      <div className="hidden lg:flex absolute -right-4 top-1/2 -translate-y-1/2 translate-x-full z-50">
+                        <ArrowRight className="w-8 h-8 text-muted-foreground/50" />
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </section>
       </div>

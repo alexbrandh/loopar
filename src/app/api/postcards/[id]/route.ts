@@ -106,8 +106,34 @@ async function handleGetPostcard(
   logger.debug('Generating signed URLs for postcard assets', { postcardId });
   const startTime = Date.now();
   
-  // Prepare paths
-  const imagePath = `${postcard.user_id}/${postcard.id}/image.JPG`;
+  // Find actual image file in storage (extension may vary)
+  const folder = `${postcard.user_id}/${postcard.id}`;
+  let imagePath = '';
+  
+  try {
+    const { data: files, error: listError } = await supabase.storage
+      .from('postcard-images')
+      .list(folder);
+    
+    if (!listError && files && files.length > 0) {
+      // Find any image file (jpg, jpeg, png, webp)
+      const imageFile = files.find(f => 
+        /\.(jpg|jpeg|png|webp|gif)$/i.test(f.name)
+      );
+      if (imageFile) {
+        imagePath = `${folder}/${imageFile.name}`;
+        logger.debug('Found image file in storage', { postcardId, metadata: { imagePath } });
+      }
+    }
+  } catch (err) {
+    logger.warn('Error listing storage files', { postcardId, metadata: { folder, error: String(err) } });
+  }
+  
+  // Fallback to common extensions if not found
+  if (!imagePath) {
+    imagePath = `${folder}/image.png`;
+  }
+  
   let videoPath = postcard.video_url;
   
   // If video_url is a signed URL, extract the path

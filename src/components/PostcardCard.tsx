@@ -29,7 +29,7 @@ const getStatusIcon = (status: ProcessingStatus) => {
     case 'needs_better_image':
       return <AlertCircle className="h-4 w-4 text-orange-500" />;
     default:
-      return <Clock className="h-4 w-4 text-gray-500" />;
+      return <Clock className="h-4 w-4 text-muted-foreground" />;
   }
 };
 
@@ -75,36 +75,41 @@ const PostcardCard = memo(({ postcard, onDelete, onNavigate }: PostcardCardProps
 
   return (
     <Card 
-      className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-blue-200"
+      className="group hover:shadow-lg transition-all duration-300 cursor-pointer border border-border hover:border-border/80 bg-card overflow-hidden"
       onClick={handleCardClick}
     >
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
+      <CardHeader className="p-4 pb-3">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-lg truncate">{postcard.title}</CardTitle>
-            <CardDescription className="mt-1 line-clamp-2">
-              {postcard.description}
-            </CardDescription>
+            <CardTitle className="text-base font-semibold text-foreground truncate">{postcard.title}</CardTitle>
+            {postcard.description && (
+              <CardDescription className="mt-1 text-sm text-muted-foreground line-clamp-1">
+                {postcard.description}
+              </CardDescription>
+            )}
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant={getStatusVariant(postcard.processing_status)} className="ml-2 flex-shrink-0 cursor-help">
-                <div className="flex items-center gap-1">
-                  {getStatusIcon(postcard.processing_status)}
-                  <span className="text-xs">{getStatusText(postcard.processing_status)}</span>
-                </div>
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Estado: {getStatusText(postcard.processing_status)}</p>
-            </TooltipContent>
-          </Tooltip>
+          <Badge 
+            className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${
+              postcard.processing_status === 'ready' 
+                ? 'bg-emerald-500 text-white' 
+                : postcard.processing_status === 'processing'
+                ? 'bg-amber-500 text-white'
+                : postcard.processing_status === 'error'
+                ? 'bg-red-500 text-white'
+                : 'bg-orange-500 text-white'
+            }`}
+          >
+            <span className="flex items-center gap-1">
+              {getStatusIcon(postcard.processing_status)}
+              {getStatusText(postcard.processing_status)}
+            </span>
+          </Badge>
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
+      <CardContent className="p-4 pt-0 space-y-3">
         {/* Image Preview */}
-        <div className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
+        <div className="relative aspect-video bg-muted rounded-xl overflow-hidden ring-1 ring-border">
           {postcard.image_url && isValidImageUrl(postcard.image_url) ? (
             <Image
               src={postcard.image_url}
@@ -118,7 +123,7 @@ const PostcardCard = memo(({ postcard, onDelete, onNavigate }: PostcardCardProps
             />
           ) : (
             <div className="flex items-center justify-center h-full">
-              <ImageIcon className="h-12 w-12 text-gray-400" />
+              <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
             </div>
           )}
           
@@ -127,7 +132,7 @@ const PostcardCard = memo(({ postcard, onDelete, onNavigate }: PostcardCardProps
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
               <div className="bg-white rounded-lg p-4 max-w-xs w-full mx-4">
                 <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                   <span className="text-sm font-medium">Procesando AR...</span>
                 </div>
               </div>
@@ -139,7 +144,7 @@ const PostcardCard = memo(({ postcard, onDelete, onNavigate }: PostcardCardProps
         {(postcard.processing_status === 'error' || postcard.processing_status === 'needs_better_image') && postcard.error_message && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3">
             <div className="flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-red-800">Problema detectado</p>
                 <p className="text-xs text-red-600 mt-1">{postcard.error_message}</p>

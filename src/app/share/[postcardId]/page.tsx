@@ -23,23 +23,23 @@ export async function generateMetadata({ params }: SharePageProps): Promise<Meta
 
     if (!postcard) {
       return {
-        title: 'Postcard no encontrada - Loopar',
+        title: 'Postcard no encontrada - Regaliz',
         description: 'La postcard que buscas no existe o ha sido eliminada.'
       };
     }
 
     return {
-      title: `${postcard.title} - Loopar AR`,
+      title: `${postcard.title} - Regaliz AR`,
       description: `Mira esta increíble postcard en realidad aumentada: ${postcard.title}`,
       openGraph: {
-        title: `${postcard.title} - Loopar AR`,
+        title: `${postcard.title} - Regaliz AR`,
         description: `Experimenta esta postcard en realidad aumentada`,
         images: postcard.image_url ? [postcard.image_url] : [],
         type: 'website',
       },
       twitter: {
         card: 'summary_large_image',
-        title: `${postcard.title} - Loopar AR`,
+        title: `${postcard.title} - Regaliz AR`,
         description: `Experimenta esta postcard en realidad aumentada`,
         images: postcard.image_url ? [postcard.image_url] : [],
       },
@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: SharePageProps): Promise<Meta
   } catch (error) {
     console.error('Error generando metadata:', error);
     return {
-      title: 'Postcard - Loopar',
+      title: 'Postcard - Regaliz',
       description: 'Experimenta postcards en realidad aumentada'
     };
   }
