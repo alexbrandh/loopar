@@ -38,7 +38,6 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useMindARBrowserCompiler, preloadMindARCompiler } from '@/hooks/useMindARBrowserCompiler';
 import { useVideoConverter, needsConversion } from '@/hooks/useVideoConverter';
 import { logger } from '@/lib/logger';
-import { TimingDebugOverlay, useTimingLog } from '@/components/ui/timing-debug-overlay';
 
 interface FileWithPreview {
   file: File;
@@ -67,7 +66,6 @@ export default function NewPostcard() {
     preloadMindARCompiler();
   }, []);
 
-  const timing = useTimingLog();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -527,8 +525,6 @@ export default function NewPostcard() {
 
     try {
       setCanCancel(true);
-      timing.reset();
-      timing.lap('INICIO handleSubmit');
 
       let finalVideoFile = videoFile.file;
       const willConvert = needsConversion(videoFile.file.name);
@@ -546,23 +542,18 @@ export default function NewPostcard() {
           description: "Tu video se está convirtiendo a formato MP4 compatible...",
         });
         finalVideoFile = await convertToMp4(videoFile.file);
-        timing.lap('Video convertido');
       }
 
-      timing.addInfo(`Imagen: ${(imageFile.file.size / 1024).toFixed(0)} KB (${imageFile.file.type})`);
-      timing.addInfo(`Video: ${(finalVideoFile.size / (1024 * 1024)).toFixed(1)} MB (${finalVideoFile.type})`);
 
       setCurrentStep('creating');
       updateOverallProgress('creating');
 
-      timing.lap('Llamando createPostcard API');
       const postcard = await createPostcard({
         title: title.trim(),
         description: description.trim(),
         imageFile: imageFile.file,
         videoFile: finalVideoFile,
       });
-      timing.lap('createPostcard API completado');
 
       currentPostcardIdRef.current = postcard.postcard.id;
 
@@ -574,27 +565,16 @@ export default function NewPostcard() {
       const videoUploadId = `video-${postcard.postcard.id}`;
       currentUploadIdsRef.current.video = videoUploadId;
 
-      timing.lap('Iniciando video upload (background)');
-      const videoUploadStart = performance.now();
-      videoUploadPromiseRef.current = uploadFile(finalVideoFile, postcard.videoUploadUrl, { uploadId: videoUploadId })
-        .then(() => {
-          timing.lapDuration('VIDEO UPLOAD completado', videoUploadStart);
-        });
+      videoUploadPromiseRef.current = uploadFile(finalVideoFile, postcard.videoUploadUrl, { uploadId: videoUploadId });
 
-      timing.lap('Iniciando image upload');
-      const imageUploadStart = performance.now();
       await uploadFile(imageFile.file, postcard.imageUploadUrl, { uploadId: imageUploadId, skipValidation: true });
-      timing.lapDuration('IMAGE UPLOAD completado', imageUploadStart);
-      timing.lap('Triggering MindAR');
 
       setImageUploaded(true);
 
       setCurrentStep('uploading-video');
       updateOverallProgress('uploading-video');
 
-      timing.lap('Esperando video upload...');
       await videoUploadPromiseRef.current;
-      timing.lap('Video upload completado');
 
     } catch (error) {
       logger.error('Error creando postal', { operation: 'create_postcard' }, error instanceof Error ? error : new Error(String(error)));
@@ -870,8 +850,6 @@ export default function NewPostcard() {
             </div>
           </form>
         </div>
-        {/* Debug timing overlay — shows on-screen for mobile testing */}
-        <TimingDebugOverlay entries={timing.entries} visible={currentStep !== 'idle'} />
       </MainLayout>
     </TooltipProvider>
   );

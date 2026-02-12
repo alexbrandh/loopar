@@ -36,12 +36,10 @@ async function loadCompiler(): Promise<any> {
     try {
       // First load AFRAME if not present (required by MindAR AFRAME bundle)
       if (!(window as any).AFRAME) {
-        console.log('📦 Loading A-Frame...');
         await loadScript('https://aframe.io/releases/1.5.0/aframe.min.js');
       }
 
       // Load MindAR AFRAME bundle which exposes MINDAR global properly
-      console.log('📦 Loading MindAR compiler...');
       await loadScript('https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js');
       
       // Check for MINDAR global
@@ -206,26 +204,18 @@ export function useMindARBrowserCompiler({
     onGenerationStart?.();
 
     try {
-      const mt0 = performance.now();
-      const mlap = (label: string) => {
-        const elapsed = ((performance.now() - mt0) / 1000).toFixed(2);
-        console.log(`⏱️ [TIMING][MINDAR] ${label} — ${elapsed}s`);
-      };
 
-      mlap('compile() iniciado');
 
       // Step 1: Load compiler
       setStatus({ state: 'loading', progress: 0.05, message: 'Cargando compilador MindAR...' });
       
       const CompilerClass = await loadCompiler();
       const compiler = new CompilerClass();
-      mlap('Compilador cargado');
 
       // Step 2: Load image
       setStatus({ state: 'loading', progress: 0.1, message: 'Cargando imagen...' });
       
       const img = await loadImageFromFile(imageFile);
-      mlap(`Imagen cargada (${img.width}x${img.height})`);
 
       logger.info('🚀 [MINDAR] Starting browser compilation', {
         operation: 'mindar_browser_compile_start',
@@ -245,29 +235,22 @@ export function useMindARBrowserCompiler({
           message: `Analizando características: ${Math.round(progress)}%`
         });
       });
-      mlap('Compilación completada');
 
-      console.log('📊 Compilation result:', dataList);
 
       // Step 4: Export
       setStatus({ state: 'compiling', progress: 0.88, message: 'Exportando datos...' });
       
       const exportedBuffer = await compiler.exportData();
-      mlap(`Export completado (${(exportedBuffer.byteLength / 1024).toFixed(0)} KB)`);
       
-      console.log('📦 Exported buffer size:', exportedBuffer.byteLength);
 
       // Step 5: Wait for video upload if running in parallel
       if (videoUploadPromiseRef?.current) {
         setStatus({ state: 'uploading', progress: 0.90, message: 'Esperando subida de video...' });
-        mlap('Esperando video upload...');
         await videoUploadPromiseRef.current;
-        mlap('Video upload await completado');
       }
 
       // Step 6: Upload to server
       setStatus({ state: 'uploading', progress: 0.92, message: 'Subiendo target...' });
-      mlap('Subiendo .mind al servidor...');
 
       const formData = new FormData();
       formData.append('postcardId', postcardId);
@@ -282,11 +265,9 @@ export function useMindARBrowserCompiler({
         const result = await response.json();
         throw new Error(result.error || 'Upload failed');
       }
-      mlap('Upload .mind completado');
 
       // Complete!
       setStatus({ state: 'completed', progress: 1, message: '¡Completado!' });
-      mlap('TOTAL MindAR pipeline');
 
       logger.info('✅ [MINDAR] Compilation complete', {
         operation: 'mindar_browser_compile_complete',
