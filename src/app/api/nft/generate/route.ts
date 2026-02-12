@@ -253,6 +253,7 @@ async function handleGenerateNFT(
       .from('postcards')
       .update({ 
         processing_status: 'error',
+        error_message: 'NFT generation failed',
         updated_at: new Date().toISOString()
       })
       .eq('id', postcardId);
@@ -273,7 +274,7 @@ async function handleGenerateNFT(
   if (!descriptorValidation.isValid) {
     console.error('Generated NFT descriptors validation failed:', descriptorValidation.errors);
     
-    // Update postcard status to error
+    // Update postcard status to needs_better_image
     await supabase
       .from('postcards')
       .update({ 
@@ -295,12 +296,24 @@ async function handleGenerateNFT(
 
   console.log('NFT descriptors generated successfully for postcard:', postcardId);
 
-  // ✅ CRITICAL: Update postcard status to 'ready' and save NFT descriptors
+  // Verify video exists in storage before marking as ready
+  const videoFolder = `${postcard.user_id}/${postcardId}`;
+  const { data: videoFiles } = await supabase.storage
+    .from('postcard-videos')
+    .list(videoFolder);
+  const videoExists = videoFiles && videoFiles.length > 0 && videoFiles.some((f) => f.name?.includes('video'));
+
+  if (!videoExists) {
+    console.warn(`⚠️ Video not found for postcard ${postcardId}. Not marking as ready.`);
+  }
+
+  // CRITICAL: Update postcard status to ready only if video exists
   await supabase
     .from('postcards')
     .update({ 
-      processing_status: 'ready',
+      processing_status: videoExists ? 'ready' : 'processing',
       nft_descriptors: result,
+      error_message: videoExists ? null : 'Video aún no se ha subido completamente',
       updated_at: new Date().toISOString()
     })
     .eq('id', postcardId);

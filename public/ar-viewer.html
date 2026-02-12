@@ -144,6 +144,40 @@
       z-index: 1000;
     }
     #play-hint.hidden { display: none; }
+    
+    #sound-btn {
+      position: fixed;
+      top: max(16px, env(safe-area-inset-top));
+      right: 16px;
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #F47B6B 0%, #F5B5B5 100%);
+      backdrop-filter: blur(10px);
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(244, 123, 107, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+      animation: pulse-sound 2s ease-in-out infinite;
+    }
+    #sound-btn:active {
+      transform: scale(0.9);
+    }
+    #sound-btn.hidden { display: none; }
+    #sound-btn.unmuted {
+      background: rgba(26, 26, 26, 0.8);
+      border-color: rgba(244, 123, 107, 0.3);
+      box-shadow: none;
+      animation: none;
+    }
+    @keyframes pulse-sound {
+      0%, 100% { transform: scale(1); box-shadow: 0 4px 15px rgba(244, 123, 107, 0.4); }
+      50% { transform: scale(1.1); box-shadow: 0 6px 25px rgba(244, 123, 107, 0.6); }
+    }
   </style>
 </head>
 <body>
@@ -171,6 +205,17 @@
     </svg>
   </button>
   <div id="play-hint" class="hidden">Toca para reproducir</div>
+  
+  <button id="sound-btn" class="hidden" title="Activar sonido">
+    <!-- Muted icon (default) -->
+    <svg id="sound-off-icon" width="24" height="24" fill="#fff" viewBox="0 0 24 24">
+      <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+    </svg>
+    <!-- Unmuted icon -->
+    <svg id="sound-on-icon" width="24" height="24" fill="#FAF8F5" viewBox="0 0 24 24" style="display:none">
+      <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+    </svg>
+  </button>
 
   <script>
     let videoReady = false;
@@ -183,10 +228,26 @@
     
     // Custom components
     AFRAME.registerComponent('video-texture', {
-      schema: { src: { type: 'selector' } },
+      schema: {
+        src: { type: 'selector' },
+        targetImage: { type: 'string', default: '' }
+      },
       init: function() {
         this.video = this.data.src;
         this.dimensionsSet = false;
+        this.targetAspect = null;
+
+        // Load target image to get its aspect ratio
+        if (this.data.targetImage) {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            this.targetAspect = img.naturalWidth / img.naturalHeight;
+            console.log('Target image aspect:', this.targetAspect);
+          };
+          img.src = this.data.targetImage;
+        }
+
         if (this.video) {
           this.texture = new THREE.VideoTexture(this.video);
           this.texture.minFilter = THREE.LinearFilter;
@@ -200,20 +261,49 @@
       tick: function() {
         if (this.texture && this.video?.readyState >= 2) {
           this.texture.needsUpdate = true;
-          // Set dimensions based on video aspect ratio (keeps original aspect)
           if (!this.dimensionsSet && this.video.videoWidth > 0) {
             this.dimensionsSet = true;
             const videoAspect = this.video.videoWidth / this.video.videoHeight;
-            // Video plane fills the target width, height adjusts to maintain aspect
-            const w = 1;
-            const h = 1 / videoAspect;
+            // In MindAR, target width = 1, target height = 1 / targetAspect
+            const targetAspect = this.targetAspect || 1;
+            const targetHeight = 1 / targetAspect;
+
+            let w, h;
+
+            if (targetAspect < 1 && videoAspect > 1) {
+              // Portrait target + landscape video: fill target height
+              h = targetHeight;
+              w = h * videoAspect;
+            } else {
+              // Default: fill target width
+              w = 1;
+              h = 1 / videoAspect;
+            }
+
             this.el.setAttribute('width', w);
             this.el.setAttribute('height', h);
-            console.log('Video dimensions set:', w, 'x', h, 'aspect:', videoAspect);
+            console.log('Video dimensions set:', w.toFixed(3), 'x', h.toFixed(3), 'videoAspect:', videoAspect.toFixed(3), 'targetAspect:', targetAspect?.toFixed(3));
           }
         }
       }
     });
+
+    // Helper to update sound button icon state
+    function updateSoundButtonUI(muted) {
+      const soundBtn = document.querySelector('#sound-btn');
+      const soundOffIcon = document.querySelector('#sound-off-icon');
+      const soundOnIcon = document.querySelector('#sound-on-icon');
+      if (!soundBtn) return;
+      if (muted) {
+        soundBtn.classList.remove('unmuted');
+        if (soundOffIcon) soundOffIcon.style.display = '';
+        if (soundOnIcon) soundOnIcon.style.display = 'none';
+      } else {
+        soundBtn.classList.add('unmuted');
+        if (soundOffIcon) soundOffIcon.style.display = 'none';
+        if (soundOnIcon) soundOnIcon.style.display = '';
+      }
+    }
 
     AFRAME.registerComponent('target-handler', {
       init: function() {
@@ -222,6 +312,7 @@
         const statusText = document.querySelector('#status-text');
         const playBtn = document.querySelector('#play-btn');
         const playHint = document.querySelector('#play-hint');
+        const soundBtn = document.querySelector('#sound-btn');
         
         this.el.addEventListener('targetFound', () => {
           targetFound = true;
@@ -229,16 +320,34 @@
           if (statusText) statusText.textContent = '¡Imagen detectada!';
           
           if (video) {
-            // Try to autoplay
             video.currentTime = 0;
+            
+            // Always start muted to guarantee autoplay works
+            video.muted = true;
             video.play().then(() => {
-              console.log('Video playing');
-              userInteracted = true;
+              console.log('Video playing (muted autoplay)');
+              videoReady = true;
               playBtn?.classList.add('hidden');
               playHint?.classList.add('hidden');
+              
+              // Show the sound button so user can unmute
+              soundBtn?.classList.remove('hidden');
+              updateSoundButtonUI(true);
+              
+              // If user already interacted before, try to unmute automatically
+              if (userInteracted) {
+                try {
+                  video.muted = false;
+                  console.log('Auto-unmuted (user had interacted)');
+                  updateSoundButtonUI(false);
+                } catch (e) {
+                  console.log('Auto-unmute failed, staying muted');
+                  video.muted = true;
+                  updateSoundButtonUI(true);
+                }
+              }
             }).catch((err) => {
               console.log('Autoplay blocked, showing play button:', err);
-              // Show play button over the target
               playBtn?.classList.remove('hidden');
               playHint?.classList.remove('hidden');
             });
@@ -250,6 +359,7 @@
           status?.classList.remove('found');
           if (statusText) statusText.textContent = 'Buscando imagen...';
           if (video) video.pause();
+          soundBtn?.classList.add('hidden');
         });
       }
     });
@@ -257,6 +367,7 @@
     function setupPlayButton() {
       const playBtn = document.querySelector('#play-btn');
       const playHint = document.querySelector('#play-hint');
+      const soundBtn = document.querySelector('#sound-btn');
       const video = document.querySelector('#vid');
       
       if (playBtn && video) {
@@ -274,21 +385,54 @@
             videoReady = true;
             playBtn.classList.add('hidden');
             playHint?.classList.add('hidden');
-            console.log('Video started by user interaction');
+            // Show sound button as unmuted
+            soundBtn?.classList.remove('hidden');
+            updateSoundButtonUI(false);
+            console.log('Video started by user interaction (with audio)');
           } catch (err) {
             console.error('Play failed:', err);
             // Try muted first then unmute
             video.muted = true;
             video.play().then(() => {
-              setTimeout(() => { video.muted = false; }, 100);
+              setTimeout(() => { 
+                video.muted = false; 
+                updateSoundButtonUI(false);
+              }, 100);
               videoReady = true;
               playBtn.classList.add('hidden');
               playHint?.classList.add('hidden');
+              soundBtn?.classList.remove('hidden');
+              updateSoundButtonUI(true);
             }).catch(console.error);
           }
         });
       }
-      // Button will be shown when target is detected, not before
+    }
+    
+    function setupSoundButton() {
+      const soundBtn = document.querySelector('#sound-btn');
+      const video = document.querySelector('#vid');
+      
+      if (soundBtn && video) {
+        soundBtn.addEventListener('click', () => {
+          userInteracted = true;
+          
+          if (video.muted) {
+            video.muted = false;
+            updateSoundButtonUI(false);
+            console.log('Audio unmuted by user');
+            
+            // If video was paused, try to resume
+            if (video.paused && targetFound) {
+              video.play().catch(() => {});
+            }
+          } else {
+            video.muted = true;
+            updateSoundButtonUI(true);
+            console.log('Audio muted by user');
+          }
+        });
+      }
     }
 
     // Initialize
@@ -346,12 +490,13 @@
           </a-assets>
           <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
           <a-entity mindar-image-target="targetIndex: 0" target-handler>
-            <a-plane position="0 0 0.01" width="1" height="0.5625" video-texture="src: #vid" material="shader: flat"></a-plane>
+            <a-plane position="0 0 0.01" width="1" height="0.5625" video-texture="src: #vid; targetImage: ${imageUrl}" material="shader: flat"></a-plane>
           </a-entity>
         `;
         
         document.body.appendChild(scene);
         setupPlayButton();
+        setupSoundButton();
         
       } catch (error) {
         console.error('Error:', error);

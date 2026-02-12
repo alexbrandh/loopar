@@ -30,13 +30,15 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ImageCropper, getCroppedImg } from '@/components/ui/image-cropper';
 import FileUpload from '@/components/ui/file-upload';
+import { UploadProgressOverlay } from '@/components/ui/upload-progress-overlay';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUpload } from '@/hooks/useUpload';
 import { usePostcards } from '@/hooks/usePostcards';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { useMindARBrowserCompiler } from '@/hooks/useMindARBrowserCompiler';
+import { useMindARBrowserCompiler, preloadMindARCompiler } from '@/hooks/useMindARBrowserCompiler';
 import { useVideoConverter, needsConversion } from '@/hooks/useVideoConverter';
 import { logger } from '@/lib/logger';
+import { TimingDebugOverlay, useTimingLog } from '@/components/ui/timing-debug-overlay';
 
 interface FileWithPreview {
   file: File;
@@ -52,10 +54,20 @@ interface FileWithPreview {
 export default function NewPostcard() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
-  const { uploadFile, uploads, cancelUpload, cancelAllUploads } = useUpload();
+  const { uploadFile, uploads, cancelUpload, cancelAllUploads } = useUpload({
+    maxFileSize: 250 * 1024 * 1024, // 250MB to accommodate video uploads
+  });
   const { createPostcard } = usePostcards();
   const { isOnline } = useNetworkStatus();
   const { convertToMp4, isConverting, progress: conversionProgress } = useVideoConverter();
+
+  // Preload MindAR compiler scripts as soon as the page mounts
+  // so they're cached by the time the user submits
+  useEffect(() => {
+    preloadMindARCompiler();
+  }, []);
+
+  const timing = useTimingLog();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -71,16 +83,19 @@ export default function NewPostcard() {
   const [canCancel, setCanCancel] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [imageUploaded, setImageUploaded] = useState(false);
+  const [hasConversion, setHasConversion] = useState(false);
 
   // Referencias para cancelación
   const currentPostcardIdRef = useRef<string | null>(null);
   const currentUploadIdsRef = useRef<{ image?: string; video?: string }>({});
+  const videoUploadPromiseRef = useRef<Promise<void> | null>(null);
 
   // MindAR Browser compilation hook - compiles in browser with progress feedback
   const { status: compilationStatus } = useMindARBrowserCompiler({
     postcardId: currentPostcardIdRef.current,
     imageUploaded,
     imageFile: imageFile?.file || null,
+    videoUploadPromiseRef,
     onGenerationStart: () => {
       setCurrentStep('generating-nft');
       updateOverallProgress('generating-nft');
@@ -180,23 +195,31 @@ export default function NewPostcard() {
     }
   }, [cancelUpload, cancelAllUploads, canCancel, isCancelling]);
 
-  // Función para actualizar el progreso general
-  const updateOverallProgress = useCallback((step: typeof currentStep, stepProgress: number = 0) => {
-    const stepWeights = {
-      idle: 0,
-      'converting-video': 5,
-      creating: 10,
-      'uploading-image': 30,
-      'uploading-video': 30,
-      'generating-nft': 15,
-      'uploading-nft': 15,
-      completed: 100
-    };
+  // Rangos acumulativos de progreso por paso [inicio%, fin%]
+  // Optimized: image upload is fast (JPEG ~2-5MB), video + MindAR run in parallel
+  const stepRanges = useRef<Record<string, [number, number]>>({
+    idle:              [0,   0],
+    'converting-video':[0,   5],
+    creating:          [5,  12],
+    'uploading-image': [12, 25],
+    'uploading-video': [25, 60],
+    'generating-nft':  [60, 95],
+    'uploading-nft':   [95, 99],
+    completed:         [100,100],
+  }).current;
 
-    const baseProgress = stepWeights[step];
-    const totalProgress = Math.min(100, baseProgress + stepProgress);
-    setOverallProgress(totalProgress);
-  }, []);
+  // Función para actualizar el progreso general con sub-progreso real (0-100 dentro del paso)
+  const updateOverallProgress = useCallback((step: typeof currentStep, subProgress: number = 0) => {
+    const range = stepRanges[step] || [0, 0];
+    if (step === 'completed') {
+      setOverallProgress(100);
+      return;
+    }
+    const [start, end] = range;
+    const clampedSub = Math.max(0, Math.min(100, subProgress));
+    const totalProgress = Math.round(start + ((end - start) * clampedSub) / 100);
+    setOverallProgress(Math.min(99, totalProgress));
+  }, [stepRanges]);
 
   // Efecto para limpiar operaciones al desmontar (sin disparar UI/Logs de usuario)
   useEffect(() => {
@@ -206,18 +229,35 @@ export default function NewPostcard() {
     };
   }, [cancelAllUploads]);
 
-  // Efecto para actualizar progreso de upload
+  // Efecto para alimentar progreso real de uploads al progreso general
   useEffect(() => {
     if (uploads.length > 0) {
-      // Obtener el progreso del upload más reciente
       const latestUpload = uploads[uploads.length - 1];
       if (latestUpload && latestUpload.progress !== undefined) {
         setUploadProgress(latestUpload.progress);
+        // Alimentar sub-progreso real al paso actual
+        if (currentStep === 'uploading-image' || currentStep === 'uploading-video') {
+          updateOverallProgress(currentStep, latestUpload.progress);
+        }
       }
     } else {
       setUploadProgress(0);
     }
-  }, [uploads]);
+  }, [uploads, currentStep, updateOverallProgress]);
+
+  // Efecto para alimentar progreso de compilación MindAR al progreso general
+  useEffect(() => {
+    if (currentStep === 'generating-nft' && compilationStatus.progress > 0) {
+      updateOverallProgress('generating-nft', compilationStatus.progress);
+    }
+  }, [compilationStatus.progress, currentStep, updateOverallProgress]);
+
+  // Efecto para alimentar progreso de conversión de video
+  useEffect(() => {
+    if (currentStep === 'converting-video' && conversionProgress.percent > 0) {
+      updateOverallProgress('converting-video', conversionProgress.percent);
+    }
+  }, [conversionProgress.percent, currentStep, updateOverallProgress]);
 
   const validateVideoDuration = useCallback((file: File): Promise<number> => {
     return new Promise((resolve) => {
@@ -287,9 +327,6 @@ export default function NewPostcard() {
   };
 
   const handleCropComplete = async (croppedBlob: Blob, croppedUrl: string) => {
-    // Create a File from the Blob
-    const croppedFile = new File([croppedBlob], 'cropped-image.png', { type: 'image/png' });
-    
     // Get dimensions of cropped image
     const img = document.createElement('img');
     img.src = croppedUrl;
@@ -304,10 +341,40 @@ export default function NewPostcard() {
       });
       return;
     }
+
+    // Compress image: convert PNG to JPEG for much smaller file size
+    // (cropped PNGs can be 30+ MB, JPEG at 0.85 quality is typically 2-5 MB)
+    let finalFile: File;
+    let finalPreview: string;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      const jpegBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error('Compression failed'))),
+          'image/jpeg',
+          0.85
+        );
+      });
+      finalFile = new File([jpegBlob], 'cropped-image.jpg', { type: 'image/jpeg' });
+      finalPreview = URL.createObjectURL(jpegBlob);
+      URL.revokeObjectURL(croppedUrl);
+      logger.info('Imagen comprimida', {
+        operation: 'image_compressed',
+        metadata: { originalSize: croppedBlob.size, compressedSize: jpegBlob.size }
+      });
+    } catch {
+      // Fallback to original PNG if compression fails
+      finalFile = new File([croppedBlob], 'cropped-image.png', { type: 'image/png' });
+      finalPreview = croppedUrl;
+    }
     
     setImageFile({
-      file: croppedFile,
-      preview: croppedUrl,
+      file: finalFile,
+      preview: finalPreview,
       type: 'image',
       metadata: { width: img.width, height: img.height }
     });
@@ -460,87 +527,85 @@ export default function NewPostcard() {
 
     try {
       setCanCancel(true);
-      
-      // Convert video if needed (e.g., .mov to .mp4)
+      timing.reset();
+      timing.lap('INICIO handleSubmit');
+
       let finalVideoFile = videoFile.file;
-      if (needsConversion(videoFile.file.name)) {
+      const willConvert = needsConversion(videoFile.file.name);
+      setHasConversion(willConvert);
+      if (willConvert) {
         setCurrentStep('converting-video');
         updateOverallProgress('converting-video');
-        logger.info('Convirtiendo video a formato compatible', { 
-          userId: user.id, 
-          operation: 'convert_video', 
-          metadata: { originalFormat: videoFile.file.name.split('.').pop() } 
+        logger.info('Convirtiendo video a formato compatible', {
+          userId: user.id,
+          operation: 'convert_video',
+          metadata: { originalFormat: videoFile.file.name.split('.').pop() }
         });
-        
         toast({
           title: "Convirtiendo video",
           description: "Tu video se está convirtiendo a formato MP4 compatible...",
         });
-        
         finalVideoFile = await convertToMp4(videoFile.file);
-        logger.info('Video convertido exitosamente', { 
-          operation: 'video_converted', 
-          metadata: { newSize: finalVideoFile.size } 
-        });
+        timing.lap('Video convertido');
       }
-      
+
+      timing.addInfo(`Imagen: ${(imageFile.file.size / 1024).toFixed(0)} KB (${imageFile.file.type})`);
+      timing.addInfo(`Video: ${(finalVideoFile.size / (1024 * 1024)).toFixed(1)} MB (${finalVideoFile.type})`);
+
       setCurrentStep('creating');
       updateOverallProgress('creating');
-      logger.info('Iniciando creación de postal', { userId: user.id, operation: 'create_postcard', metadata: { title } });
 
-      // Create postcard record
+      timing.lap('Llamando createPostcard API');
       const postcard = await createPostcard({
         title: title.trim(),
         description: description.trim(),
         imageFile: imageFile.file,
         videoFile: finalVideoFile,
       });
+      timing.lap('createPostcard API completado');
 
       currentPostcardIdRef.current = postcard.postcard.id;
-      logger.info('Postal creada', { postcardId: postcard.postcard.id, operation: 'create_postcard_record' });
 
-      // Upload image
       setCurrentStep('uploading-image');
       updateOverallProgress('uploading-image');
 
       const imageUploadId = `image-${postcard.postcard.id}`;
       currentUploadIdsRef.current.image = imageUploadId;
-
-      await uploadFile(imageFile.file, postcard.imageUploadUrl, { uploadId: imageUploadId });
-      setImageUploaded(true);
-      logger.info('Imagen subida exitosamente', { postcardId: postcard.postcard.id, operation: 'image_upload_complete' });
-
-      // Upload video
-      setCurrentStep('uploading-video');
-      updateOverallProgress('uploading-video');
-
       const videoUploadId = `video-${postcard.postcard.id}`;
       currentUploadIdsRef.current.video = videoUploadId;
 
-      await uploadFile(finalVideoFile, postcard.videoUploadUrl, { uploadId: videoUploadId });
-      // Video uploaded successfully
-      logger.info('Video subido exitosamente', { postcardId: postcard.postcard.id, operation: 'video_upload_complete' });
+      timing.lap('Iniciando video upload (background)');
+      const videoUploadStart = performance.now();
+      videoUploadPromiseRef.current = uploadFile(finalVideoFile, postcard.videoUploadUrl, { uploadId: videoUploadId })
+        .then(() => {
+          timing.lapDuration('VIDEO UPLOAD completado', videoUploadStart);
+        });
 
-      // Trigger automatic NFT generation
+      timing.lap('Iniciando image upload');
+      const imageUploadStart = performance.now();
+      await uploadFile(imageFile.file, postcard.imageUploadUrl, { uploadId: imageUploadId, skipValidation: true });
+      timing.lapDuration('IMAGE UPLOAD completado', imageUploadStart);
+      timing.lap('Triggering MindAR');
+
       setImageUploaded(true);
-      logger.info('Archivos subidos, iniciando generación de NFT', {
-        postcardId: postcard.postcard.id,
-        operation: 'files_uploaded_starting_nft'
-      });
+
+      setCurrentStep('uploading-video');
+      updateOverallProgress('uploading-video');
+
+      timing.lap('Esperando video upload...');
+      await videoUploadPromiseRef.current;
+      timing.lap('Video upload completado');
+
     } catch (error) {
       logger.error('Error creando postal', { operation: 'create_postcard' }, error instanceof Error ? error : new Error(String(error)));
-
-      // Resetear estados en caso de error
       setCurrentStep('idle');
       setOverallProgress(0);
       setCanCancel(false);
       setImageUploaded(false);
-      // Video removed
       currentPostcardIdRef.current = null;
       currentUploadIdsRef.current = {};
-
+      videoUploadPromiseRef.current = null;
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-
       toast({
         title: "Error al crear postal",
         description: `Hubo un problema al crear tu postal: ${errorMessage}. Por favor intenta de nuevo.`,
@@ -566,8 +631,8 @@ export default function NewPostcard() {
       <MainLayout>
         {/* Image Cropper Modal */}
         {showImageCropper && rawImageForCrop && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 p-2 sm:p-4">
+            <div className="w-full max-w-2xl">
               <ImageCropper
                 initialImage={rawImageForCrop}
                 onCropComplete={handleCropComplete}
@@ -582,16 +647,13 @@ export default function NewPostcard() {
         )}
 
         <div className="container mx-auto px-4 py-6 max-w-4xl">
-          {/* Header mejorado */}
+          {/* Header */}
           <div className="mb-8">
             <Link href="/dashboard" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary transition-colors mb-4">
               <ArrowLeft className="mr-1.5 h-4 w-4" />
               Volver al Panel
             </Link>
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-linear-to-br from-primary to-ring mb-4">
-                <ImageIcon className="w-7 h-7 text-white" />
-              </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Crear Nueva Postal</h1>
               <p className="text-muted-foreground mt-2 max-w-md mx-auto text-sm sm:text-base">
                 Sube una imagen y video para crear tu experiencia AR interactiva
@@ -609,94 +671,19 @@ export default function NewPostcard() {
             </Alert>
           )}
 
-          <AnimatePresence>
-            {currentStep !== 'idle' && (
-              <motion.div
-                initial={{ opacity: 0, y: -20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 300, damping: 24 }}
-                className="mb-6"
-              >
-                <Card className="border-primary/20 bg-secondary/50 shadow-sm hover:shadow-md transition-all">
-                  <CardContent className="pt-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          {currentStep !== 'completed' ? (
-                            <motion.div
-                              animate={{ rotate: 360 }}
-                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            >
-                              <Loader2 className="h-5 w-5 text-primary" />
-                            </motion.div>
-                          ) : (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              transition={{ type: "spring", stiffness: 500, damping: 15 }}
-                            >
-                              <CheckCircle className="h-5 w-5 text-emerald-500" />
-                            </motion.div>
-                          )}
-                          <div>
-                            <h3 className="font-semibold text-foreground">
-                              {currentStep === 'converting-video' && 'Convirtiendo video...'}
-                              {currentStep === 'creating' && 'Creando postal...'}
-                              {currentStep === 'uploading-image' && 'Subiendo imagen...'}
-                              {currentStep === 'uploading-video' && 'Subiendo video...'}
-                              {currentStep === 'generating-nft' && 'Generando experiencia AR...'}
-                              {currentStep === 'completed' && '¡Completado!'}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              {currentStep === 'creating' && 'Configurando tu postal...'}
-                              {currentStep === 'uploading-image' && 'Procesando imagen...'}
-                              {currentStep === 'uploading-video' && 'Procesando video...'}
-                              {currentStep === 'generating-nft' && 'Creando experiencia AR...'}
-                              {currentStep === 'completed' && 'Tu postal está lista'}
-                              {currentStep === 'converting-video' && 'Optimizando formato...'}
-                            </p>
-                          </div>
-                        </div>
-                        {canCancel && currentStep !== 'completed' && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleCancelOperation}
-                            disabled={isCancelling}
-                            className="text-destructive hover:text-destructive/80"
-                          >
-                            {isCancelling ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <X className="h-4 w-4" />
-                            )}
-                          </Button>
-                        )}
-                      </div>
-
-                      {/* Progress bar animada */}
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                          <span>Progreso</span>
-                          <span className="font-medium">{Math.round(overallProgress)}%</span>
-                        </div>
-                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${overallProgress}%` }}
-                            transition={{ duration: 0.4, type: "spring", stiffness: 100 }}
-                            className={`h-full rounded-full ${overallProgress < 100 ? 'bg-primary' : 'bg-emerald-500'}`}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Fullscreen upload progress overlay */}
+          <UploadProgressOverlay
+            currentStep={currentStep}
+            overallProgress={overallProgress}
+            uploadProgress={uploadProgress}
+            compilationProgress={compilationStatus.progress}
+            conversionPercent={conversionProgress.percent}
+            videoSizeMB={videoFile ? Math.round(videoFile.file.size / (1024 * 1024)) : 0}
+            canCancel={canCancel}
+            isCancelling={isCancelling}
+            onCancel={handleCancelOperation}
+            hasConversion={hasConversion}
+          />
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
@@ -844,78 +831,6 @@ export default function NewPostcard() {
               </CardContent>
             </Card>
 
-            {/* Progress Bar - Shown at bottom when creating */}
-            <AnimatePresence>
-              {currentStep !== 'idle' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 50, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 50, scale: 0.95 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 24 }}
-                  className="sticky bottom-4"
-                >
-                  <Card className="border-primary/20 bg-secondary/50 shadow-lg backdrop-blur">
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          {currentStep !== 'completed' ? (
-                            <motion.div
-                              animate={{ rotate: 360 }}
-                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            >
-                              <Loader2 className="h-5 w-5 text-primary" />
-                            </motion.div>
-                          ) : (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              transition={{ type: "spring", stiffness: 500, damping: 15 }}
-                            >
-                              <CheckCircle className="h-5 w-5 text-emerald-500" />
-                            </motion.div>
-                          )}
-                          <div>
-                            <h3 className="font-semibold text-foreground">
-                              {currentStep === 'converting-video' && 'Convirtiendo video...'}
-                              {currentStep === 'creating' && 'Creando postal...'}
-                              {currentStep === 'uploading-image' && 'Subiendo imagen...'}
-                              {currentStep === 'uploading-video' && 'Subiendo video...'}
-                              {currentStep === 'generating-nft' && 'Generando experiencia AR...'}
-                              {currentStep === 'completed' && '¡Postal creada!'}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              {overallProgress < 100 ? `~${Math.max(1, Math.round((100 - overallProgress) / 10))}s restantes` : 'Redirigiendo...'}
-                            </p>
-                          </div>
-                        </div>
-                        {canCancel && currentStep !== 'completed' && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleCancelOperation}
-                            disabled={isCancelling}
-                            className="text-destructive hover:text-destructive/80"
-                          >
-                            {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                          </Button>
-                        )}
-                      </div>
-                      <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${overallProgress}%` }}
-                          transition={{ duration: 0.4, type: "spring", stiffness: 100 }}
-                          className={`h-full rounded-full ${overallProgress < 100 ? 'bg-primary' : 'bg-emerald-500'}`}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2 text-right font-medium">{Math.round(overallProgress)}% completado</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             {/* Submit Button */}
             <div className="flex justify-end gap-4">
               <Link href="/dashboard">
@@ -955,6 +870,8 @@ export default function NewPostcard() {
             </div>
           </form>
         </div>
+        {/* Debug timing overlay — shows on-screen for mobile testing */}
+        <TimingDebugOverlay entries={timing.entries} visible={currentStep !== 'idle'} />
       </MainLayout>
     </TooltipProvider>
   );

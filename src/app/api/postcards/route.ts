@@ -80,14 +80,28 @@ async function handleCreatePostcard(
   }
 
   // Validate file sizes
-  const maxFileSizeMB = parseInt(process.env.MAX_FILE_SIZE_MB || '50'); // 50MB default
-  const maxFileSize = maxFileSizeMB * 1024 * 1024; // Convert to bytes
-  if (validatedData.imageSize > maxFileSize || validatedData.videoSize > maxFileSize) {
+  const maxImageSizeMB = parseInt(process.env.MAX_FILE_SIZE_MB || '50'); // 50MB default for images
+  const maxVideoSizeMB = parseInt(process.env.MAX_VIDEO_SIZE_MB || '250'); // 250MB default for videos
+  const maxImageSize = maxImageSizeMB * 1024 * 1024;
+  const maxVideoSize = maxVideoSizeMB * 1024 * 1024;
+
+  if (validatedData.imageSize > maxImageSize) {
     return createApiResponse(
       false,
       undefined,
       {
-        message: 'File size exceeds maximum allowed size',
+        message: `Image size exceeds maximum allowed size of ${maxImageSizeMB}MB`,
+        code: 'FILE_TOO_LARGE'
+      }
+    ) as unknown as NextResponse<ApiResponse<CreatePostcardResponse>>;
+  }
+
+  if (validatedData.videoSize > maxVideoSize) {
+    return createApiResponse(
+      false,
+      undefined,
+      {
+        message: `Video size exceeds maximum allowed size of ${maxVideoSizeMB}MB`,
         code: 'FILE_TOO_LARGE'
       }
     ) as unknown as NextResponse<ApiResponse<CreatePostcardResponse>>;
@@ -206,35 +220,13 @@ async function handleCreatePostcard(
     ) as unknown as NextResponse<ApiResponse<CreatePostcardResponse>>;
   }
 
-  // Generate signed URLs for secure access with retry logic
-  // Note: Objects might not exist yet (upload happens client-side). Do not fail POST if GET signing fails.
-  let imageUrl = '';
-  let videoUrl = '';
-  try {
-    const [imageSignedResult, videoSignedResult] = await Promise.all([
-      createSignedUrlWithRetry('postcard-images', imageKey, context, 3600),
-      createSignedUrlWithRetry('postcard-videos', videoKey, context, 3600)
-    ]);
+  // Store the raw storage keys as URLs — files don't exist yet (upload happens
+  // client-side), so generating signed GET URLs here would always fail or be
+  // wasted. The GET endpoint re-signs on demand when postcards are fetched.
+  const imageUrl = imageKey;
+  const videoUrl = videoKey;
 
-    const imageSignedUrl = imageSignedResult;
-    const videoSignedUrl = videoSignedResult;
-
-    imageUrl = imageSignedUrl || imageKey;
-    videoUrl = videoSignedUrl || videoKey;
-  } catch (err) {
-    logger.warn('Signed GET URL not available yet; saving storage key instead', {
-      userId,
-      postcardId: postcard.id,
-      metadata: {
-        error: err instanceof Error ? err.message : String(err)
-      }
-    });
-    // Fallback to storage keys so we don't lose the reference
-    imageUrl = imageKey;
-    videoUrl = videoKey;
-  }
-
-  // Update postcard with URLs
+  // Update postcard with storage keys
   const { error: updateError } = await (supabase
     .from('postcards') as unknown as {
       update: (data: Record<string, unknown>) => {
@@ -248,25 +240,10 @@ async function handleCreatePostcard(
     .eq('id', postcard.id);
 
   if (updateError) {
-    console.error('⚠️ [API-POST] Error updating postcard URLs:', updateError);
-    return createApiResponse(
-      true,
-      {
-        postcard: {
-          ...postcard,
-          image_url: imageUrl,
-          video_url: videoUrl,
-        },
-        imageUploadUrl: imageUploadData!.signedUrl,
-        videoUploadUrl: videoUploadData!.signedUrl,
-      },
-      undefined,
-      undefined,
-      ['URL update failed but postcard created successfully']
-    );
+    console.error(' [API-POST] Error updating postcard URLs:', updateError);
   }
 
-  console.log('✅ [API-POST] Postcard created and URLs updated successfully');
+  console.log(' [API-POST] Postcard created and URLs updated successfully');
 
   logger.info('Upload URLs generated successfully', {
     userId,

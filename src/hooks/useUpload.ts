@@ -32,7 +32,14 @@ export function useUpload(options: UseUploadOptions = {}) {
   const ENV_MAX_FILE_SIZE_MB = Number(process.env.NEXT_PUBLIC_MAX_FILE_SIZE_MB || '50');
   const DEFAULT_MAX_FILE_SIZE = (Number.isFinite(ENV_MAX_FILE_SIZE_MB) ? ENV_MAX_FILE_SIZE_MB : 50) * 1024 * 1024;
   const ENV_UPLOAD_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_UPLOAD_TIMEOUT_MS || '120000');
-  const DEFAULT_UPLOAD_TIMEOUT_MS = Number.isFinite(ENV_UPLOAD_TIMEOUT_MS) && ENV_UPLOAD_TIMEOUT_MS > 0 ? ENV_UPLOAD_TIMEOUT_MS : 120000;
+  const BASE_UPLOAD_TIMEOUT_MS = Number.isFinite(ENV_UPLOAD_TIMEOUT_MS) && ENV_UPLOAD_TIMEOUT_MS > 0 ? ENV_UPLOAD_TIMEOUT_MS : 120000;
+
+  // Dynamic timeout: base 120s + extra time for large files (assumes worst-case 1 Mbps upload)
+  const calculateTimeout = useCallback((fileSize: number): number => {
+    const extraMs = (fileSize / (1024 * 1024)) * 8 * 1000; // 8s per MB at 1 Mbps
+    return Math.max(BASE_UPLOAD_TIMEOUT_MS, BASE_UPLOAD_TIMEOUT_MS + extraMs);
+  }, [BASE_UPLOAD_TIMEOUT_MS]);
+
   const {
     maxFileSize = DEFAULT_MAX_FILE_SIZE, // from env (fallback 50MB)
     allowedTypes = ['image/jpeg', 'image/png', 'video/mp4', 'video/quicktime'],
@@ -73,7 +80,7 @@ export function useUpload(options: UseUploadOptions = {}) {
     return null;
   }, [maxFileSize, allowedTypes]);
 
-  const uploadFile = useCallback(async (file: File, uploadUrl: string, opts?: { uploadId?: string; timeoutMs?: number }): Promise<string> => {
+  const uploadFile = useCallback(async (file: File, uploadUrl: string, opts?: { uploadId?: string; timeoutMs?: number; skipValidation?: boolean }): Promise<string> => {
     const fileId = opts?.uploadId ?? `${file.name}-${Date.now()}`;
     const requestId = startRequestMonitoring(uploadUrl, 'PUT');
 
@@ -101,15 +108,17 @@ export function useUpload(options: UseUploadOptions = {}) {
       throw new Error(errorMsg);
     }
 
-    // Validate file
-    const validationError = await validateFile(file);
-    if (validationError) {
-      logger.error('❌ [UPLOAD] File validation failed', {
-        operation: 'upload_validation_failed',
-        metadata: { fileName: file.name, error: validationError, requestId }
-      });
-      endRequestMonitoring(requestId, 'error', undefined, 'validation');
-      throw new Error(validationError);
+    // Validate file (skip if caller already validated, e.g. cropped images)
+    if (!opts?.skipValidation) {
+      const validationError = await validateFile(file);
+      if (validationError) {
+        logger.error('❌ [UPLOAD] File validation failed', {
+          operation: 'upload_validation_failed',
+          metadata: { fileName: file.name, error: validationError, requestId }
+        });
+        endRequestMonitoring(requestId, 'error', undefined, 'validation');
+        throw new Error(validationError);
+      }
     }
 
     // Initialize upload progress
@@ -121,7 +130,7 @@ export function useUpload(options: UseUploadOptions = {}) {
 
     // Create managed controller for this upload
     const managedController = abortManagerRef.current.create(fileId, {
-      timeout: opts?.timeoutMs ?? DEFAULT_UPLOAD_TIMEOUT_MS,
+      timeout: opts?.timeoutMs ?? calculateTimeout(file.size),
       debugLabel: `upload-${fileId}`
     });
 
@@ -251,7 +260,7 @@ export function useUpload(options: UseUploadOptions = {}) {
       // Cleanup managed by AbortControllerManager
       abortManagerRef.current.abort(fileId);
     }
-  }, [validateFile, onSuccess, onError, retryWithConnection, isOnline, DEFAULT_UPLOAD_TIMEOUT_MS]);
+  }, [validateFile, onSuccess, onError, retryWithConnection, isOnline, calculateTimeout]);
 
   const removeUpload = useCallback((fileId: string) => {
     setUploads(prev => {

@@ -8,6 +8,7 @@ interface CompilationOptions {
   postcardId: string | null;
   imageUploaded: boolean;
   imageFile: File | null;
+  videoUploadPromiseRef?: React.RefObject<Promise<void> | null>;
   onGenerationStart?: () => void;
   onGenerationComplete?: () => void;
   onGenerationError?: (error: string) => void;
@@ -102,20 +103,66 @@ function loadScript(src: string): Promise<void> {
 }
 
 /**
- * Load image file as HTMLImageElement
+ * Max dimension for MindAR compilation.
+ * MindAR doesn't need huge images for tracking — 1024px is more than enough
+ * and prevents mobile browsers from crashing on large images (e.g. 4536x7163).
+ */
+const MINDAR_MAX_DIMENSION = 1024;
+
+/**
+ * Load image file as HTMLImageElement, resized to fit MINDAR_MAX_DIMENSION.
+ * This prevents out-of-memory crashes on mobile devices.
  */
 function loadImageFromFile(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(img.src);
-      resolve(img);
+    const original = new Image();
+    original.onload = () => {
+      URL.revokeObjectURL(original.src);
+
+      const { width, height } = original;
+      // If already within limits, return as-is
+      if (width <= MINDAR_MAX_DIMENSION && height <= MINDAR_MAX_DIMENSION) {
+        resolve(original);
+        return;
+      }
+
+      // Resize via canvas
+      const scale = Math.min(MINDAR_MAX_DIMENSION / width, MINDAR_MAX_DIMENSION / height);
+      const newW = Math.round(width * scale);
+      const newH = Math.round(height * scale);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = newW;
+      canvas.height = newH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(original); // fallback
+        return;
+      }
+      ctx.drawImage(original, 0, 0, newW, newH);
+
+      const resized = new Image();
+      resized.onload = () => resolve(resized);
+      resized.onerror = () => resolve(original); // fallback
+      resized.src = canvas.toDataURL('image/jpeg', 0.9);
     };
-    img.onerror = () => {
-      URL.revokeObjectURL(img.src);
+    original.onerror = () => {
+      URL.revokeObjectURL(original.src);
       reject(new Error('Failed to load image'));
     };
-    img.src = URL.createObjectURL(file);
+    original.src = URL.createObjectURL(file);
+  });
+}
+
+/**
+ * Preload MindAR compiler scripts in the background.
+ * Call this early (e.g. when page mounts) so they're cached
+ * by the time compilation actually starts.
+ */
+export function preloadMindARCompiler(): void {
+  if (typeof window === 'undefined') return;
+  loadCompiler().catch(() => {
+    // Silently fail — will retry when compile() is called
   });
 }
 
@@ -127,6 +174,7 @@ export function useMindARBrowserCompiler({
   postcardId,
   imageUploaded,
   imageFile,
+  videoUploadPromiseRef,
   onGenerationStart,
   onGenerationComplete,
   onGenerationError
@@ -158,16 +206,26 @@ export function useMindARBrowserCompiler({
     onGenerationStart?.();
 
     try {
+      const mt0 = performance.now();
+      const mlap = (label: string) => {
+        const elapsed = ((performance.now() - mt0) / 1000).toFixed(2);
+        console.log(`⏱️ [TIMING][MINDAR] ${label} — ${elapsed}s`);
+      };
+
+      mlap('compile() iniciado');
+
       // Step 1: Load compiler
       setStatus({ state: 'loading', progress: 0.05, message: 'Cargando compilador MindAR...' });
       
       const CompilerClass = await loadCompiler();
       const compiler = new CompilerClass();
+      mlap('Compilador cargado');
 
       // Step 2: Load image
       setStatus({ state: 'loading', progress: 0.1, message: 'Cargando imagen...' });
       
       const img = await loadImageFromFile(imageFile);
+      mlap(`Imagen cargada (${img.width}x${img.height})`);
 
       logger.info('🚀 [MINDAR] Starting browser compilation', {
         operation: 'mindar_browser_compile_start',
@@ -187,6 +245,7 @@ export function useMindARBrowserCompiler({
           message: `Analizando características: ${Math.round(progress)}%`
         });
       });
+      mlap('Compilación completada');
 
       console.log('📊 Compilation result:', dataList);
 
@@ -194,11 +253,21 @@ export function useMindARBrowserCompiler({
       setStatus({ state: 'compiling', progress: 0.88, message: 'Exportando datos...' });
       
       const exportedBuffer = await compiler.exportData();
+      mlap(`Export completado (${(exportedBuffer.byteLength / 1024).toFixed(0)} KB)`);
       
       console.log('📦 Exported buffer size:', exportedBuffer.byteLength);
 
-      // Step 5: Upload to server
+      // Step 5: Wait for video upload if running in parallel
+      if (videoUploadPromiseRef?.current) {
+        setStatus({ state: 'uploading', progress: 0.90, message: 'Esperando subida de video...' });
+        mlap('Esperando video upload...');
+        await videoUploadPromiseRef.current;
+        mlap('Video upload await completado');
+      }
+
+      // Step 6: Upload to server
       setStatus({ state: 'uploading', progress: 0.92, message: 'Subiendo target...' });
+      mlap('Subiendo .mind al servidor...');
 
       const formData = new FormData();
       formData.append('postcardId', postcardId);
@@ -213,9 +282,11 @@ export function useMindARBrowserCompiler({
         const result = await response.json();
         throw new Error(result.error || 'Upload failed');
       }
+      mlap('Upload .mind completado');
 
       // Complete!
       setStatus({ state: 'completed', progress: 1, message: '¡Completado!' });
+      mlap('TOTAL MindAR pipeline');
 
       logger.info('✅ [MINDAR] Compilation complete', {
         operation: 'mindar_browser_compile_complete',
@@ -250,14 +321,11 @@ export function useMindARBrowserCompiler({
     }
   }, [postcardId, imageFile, onGenerationStart, onGenerationComplete, onGenerationError]);
 
-  // Auto-trigger when image is uploaded
+  // Auto-trigger when image is uploaded — no delay needed since
+  // setImageUploaded(true) is called after image upload completes
   useEffect(() => {
     if (postcardId && imageUploaded && imageFile && !generationTriggeredRef.current) {
-      // Small delay to ensure everything is ready
-      const timer = setTimeout(() => {
-        compile();
-      }, 1500);
-      return () => clearTimeout(timer);
+      compile();
     }
   }, [postcardId, imageUploaded, imageFile, compile]);
 

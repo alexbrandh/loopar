@@ -165,17 +165,17 @@ export default function ImageCropper({
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2">
+    <Card className="w-full max-w-2xl mx-auto flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-none">
+      <CardHeader className="pb-2 sm:pb-4 shrink-0">
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
           <Crop className="h-5 w-5" />
           {title}
         </CardTitle>
         {description && (
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">{description}</p>
         )}
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
+      <CardContent className="flex flex-col gap-3 sm:gap-4 overflow-y-auto flex-1 min-h-0">
         {!imageSrc && (
           <div className="space-y-2">
             <Label htmlFor="image-upload">Seleccionar imagen</Label>
@@ -194,7 +194,7 @@ export default function ImageCropper({
 
         {imageSrc && !croppedImage && (
           <>
-            <div className="relative w-full h-[350px] bg-gray-100 rounded-lg overflow-hidden">
+            <div className="relative w-full h-[220px] sm:h-[350px] bg-gray-100 rounded-lg overflow-hidden shrink-0">
               <Cropper
                 image={imageSrc}
                 crop={crop}
@@ -206,9 +206,9 @@ export default function ImageCropper({
               />
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center gap-3">
-                <Label className="min-w-[100px] flex items-center gap-2">
+                <Label className="min-w-[80px] sm:min-w-[100px] flex items-center gap-2 text-xs sm:text-sm">
                   <ZoomIn className="h-4 w-4" />
                   Zoom:
                 </Label>
@@ -220,13 +220,13 @@ export default function ImageCropper({
                   step={0.01}
                   className="flex-1"
                 />
-                <span className="text-sm text-muted-foreground w-12 text-right">
+                <span className="text-xs sm:text-sm text-muted-foreground w-10 sm:w-12 text-right">
                   {zoom.toFixed(1)}x
                 </span>
               </div>
 
               <div className="flex items-center gap-3">
-                <Label className="min-w-[100px] flex items-center gap-2">
+                <Label className="min-w-[80px] sm:min-w-[100px] flex items-center gap-2 text-xs sm:text-sm">
                   <RotateCw className="h-4 w-4" />
                   Proporción:
                 </Label>
@@ -234,7 +234,7 @@ export default function ImageCropper({
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Seleccionar proporción" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-200">
                     {ASPECT_RATIOS.map((ratio) => (
                       <SelectItem key={ratio.value} value={ratio.value}>
                         {ratio.label}
@@ -244,13 +244,14 @@ export default function ImageCropper({
                 </Select>
               </div>
 
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-1 sm:pt-2 sticky bottom-0 bg-card pb-1">
                 {onCancel && (
                   <Button 
                     type="button"
                     variant="outline" 
                     onClick={onCancel}
                     className="flex-1"
+                    size="sm"
                   >
                     Cancelar
                   </Button>
@@ -263,6 +264,7 @@ export default function ImageCropper({
                     setCroppedImage(null);
                   }}
                   className="flex-1"
+                  size="sm"
                 >
                   Cambiar imagen
                 </Button>
@@ -271,13 +273,14 @@ export default function ImageCropper({
                   onClick={handleConfirm} 
                   disabled={isProcessing}
                   className="flex-1"
+                  size="sm"
                 >
                   {isProcessing ? (
                     "Procesando..."
                   ) : (
                     <>
-                      <Check className="mr-2 h-4 w-4" />
-                      Confirmar recorte
+                      <Check className="mr-1.5 h-4 w-4" />
+                      Confirmar
                     </>
                   )}
                 </Button>

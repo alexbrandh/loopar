@@ -61,6 +61,8 @@ export async function POST(request: NextRequest) {
       .getPublicUrl(storagePath);
 
     // Update postcard with MindAR target info
+    // Video is guaranteed to exist: the client awaits video upload completion
+    // before calling this endpoint (via videoUploadPromiseRef in useMindARBrowserCompiler).
     const mindTargetInfo = {
       type: 'mindar',
       targetUrl: `/api/ar/mind-target/${userId}/${postcardId}`,
@@ -76,6 +78,7 @@ export async function POST(request: NextRequest) {
       .update({
         nft_descriptors: mindTargetInfo,
         processing_status: 'ready',
+        error_message: null,
         updated_at: new Date().toISOString()
       })
       .eq('id', postcardId);

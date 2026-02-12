@@ -101,11 +101,23 @@ export async function POST(request: NextRequest) {
       }
     };
 
+    // Verify video exists before marking as ready
+    const videoFolder = `${userId}/${postcardId}`;
+    const { data: videoFiles } = await supabase.storage
+      .from('postcard-videos')
+      .list(videoFolder);
+    const videoExists = videoFiles && videoFiles.length > 0 && videoFiles.some(f => f.name?.includes('video'));
+
+    if (!videoExists) {
+      console.warn(`⚠️ Video not found for postcard ${postcardId}. Not marking as ready.`);
+    }
+
     const { error: updateError } = await supabase
       .from('postcards')
       .update({
         nft_descriptors: nftDescriptors,
-        processing_status: 'ready',
+        processing_status: videoExists ? 'ready' : 'processing',
+        error_message: videoExists ? null : 'Video aún no se ha subido completamente',
         updated_at: new Date().toISOString()
       })
       .eq('id', postcardId);
