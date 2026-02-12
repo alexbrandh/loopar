@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
-import { createClient } from '@supabase/supabase-js';
-import { Jimp } from 'jimp';
 
 const ADMIN_PASSWORD = '6239';
 
@@ -142,9 +140,8 @@ export async function POST(
       );
     }
 
-    // If image was changed, compile new MindAR target server-side
+    // If image was changed, reset processing status - client will compile MindAR target
     if (mediaType === 'image') {
-      // Set processing status
       await (supabase
         .from('postcards') as unknown as {
           update: (data: Record<string, unknown>) => {
@@ -158,124 +155,7 @@ export async function POST(
         })
         .eq('id', postcardId);
 
-      console.log(`🔄 [ADMIN] Compiling new MindAR target for postcard ${postcardId}...`);
-
-      try {
-        // Use service role client for storage operations on 'postcards' bucket
-        const serviceSupabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-
-        // Process the uploaded image with Jimp
-        const imageBuffer = Buffer.from(arrayBuffer);
-        const image = await Jimp.read(imageBuffer);
-
-        // Resize if needed (MindAR works best with images < 1024px)
-        const maxSize = 1024;
-        if (image.width > maxSize || image.height > maxSize) {
-          image.scaleToFit({ w: maxSize, h: maxSize });
-        }
-
-        const width = image.width;
-        const height = image.height;
-
-        // Create ImageData-like object for MindAR
-        const imageData = {
-          data: new Uint8ClampedArray(width * height * 4),
-          width,
-          height
-        };
-
-        const bitmap = image.bitmap;
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            imageData.data[idx] = bitmap.data[idx];
-            imageData.data[idx + 1] = bitmap.data[idx + 1];
-            imageData.data[idx + 2] = bitmap.data[idx + 2];
-            imageData.data[idx + 3] = bitmap.data[idx + 3];
-          }
-        }
-
-        console.log(`⚙️ [ADMIN] Compiling MindAR target (${width}x${height})...`);
-
-        // @ts-ignore - MindAR doesn't have types
-        const { Compiler } = await import('mind-ar/dist/mindar-image.prod.js');
-        const compiler = new Compiler();
-
-        await compiler.compileImageTargets([imageData], (progress: number) => {
-          if (progress % 0.1 < 0.01) {
-            console.log(`⚙️ [ADMIN] MindAR progress: ${Math.round(progress * 100)}%`);
-          }
-        });
-
-        const exportedBuffer = await compiler.exportData();
-        console.log(`✅ [ADMIN] MindAR target compiled, size: ${exportedBuffer.byteLength} bytes`);
-
-        // Upload .mind file
-        const mindPath = `${userId}/${postcardId}/target.mind`;
-        const { error: mindUploadError } = await serviceSupabase.storage
-          .from('postcards')
-          .upload(mindPath, Buffer.from(exportedBuffer), {
-            contentType: 'application/octet-stream',
-            upsert: true
-          });
-
-        if (mindUploadError) {
-          throw new Error(`Failed to upload .mind file: ${mindUploadError.message}`);
-        }
-
-        // Update postcard with MindAR target info and set ready
-        const mindTargetInfo = {
-          type: 'mindar',
-          targetUrl: `/api/ar/mind-target/${userId}/${postcardId}`,
-          generated: true,
-          timestamp: new Date().toISOString(),
-          generatedBy: 'admin-server',
-          fileSize: exportedBuffer.byteLength
-        };
-
-        await serviceSupabase
-          .from('postcards')
-          .update({
-            nft_descriptors: mindTargetInfo,
-            processing_status: 'ready',
-            error_message: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', postcardId);
-
-        console.log(`🎉 [ADMIN] MindAR target compilation complete for postcard ${postcardId}`);
-      } catch (compileError) {
-        const errorMsg = compileError instanceof Error ? compileError.message : 'Error desconocido en compilación AR';
-        console.error(`❌ [ADMIN] MindAR compilation failed:`, compileError);
-
-        // Mark as error so admin can see it failed
-        await (supabase
-          .from('postcards') as unknown as {
-            update: (data: Record<string, unknown>) => {
-              eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>
-            }
-          })
-          .update({ 
-            processing_status: 'error',
-            error_message: `Error al regenerar AR: ${errorMsg}`
-          })
-          .eq('id', postcardId);
-
-        // Still return success for the image upload, but note the AR error
-        return NextResponse.json({
-          success: true,
-          data: {
-            postcardId,
-            mediaType,
-            newUrl,
-            needsReprocessing: false,
-            arError: errorMsg,
-          },
-        });
-      }
+      console.log(`🔄 [ADMIN] Image updated for postcard ${postcardId} - needs client-side MindAR compilation`);
     }
 
     console.log(`✅ [ADMIN] ${mediaType} updated for postcard ${postcardId}`);
@@ -286,7 +166,8 @@ export async function POST(
         postcardId,
         mediaType,
         newUrl,
-        needsReprocessing: false,
+        userId,
+        needsReprocessing: mediaType === 'image',
       },
     });
   } catch (error) {

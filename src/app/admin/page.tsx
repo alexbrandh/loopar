@@ -110,11 +110,13 @@ export default function AdminPage() {
     if (!editPostcard || !editMediaType || !editFile) return;
     setUploading(true);
     setUploadProgress(editMediaType === 'image' 
-      ? 'Subiendo imagen y compilando target AR... (puede tardar ~30s)' 
+      ? 'Paso 1/3: Subiendo imagen...' 
       : 'Subiendo video...');
 
     try {
       const savedPassword = sessionStorage.getItem('admin_auth');
+
+      // Step 1: Upload the media file
       const formData = new FormData();
       formData.append('password', savedPassword || '');
       formData.append('mediaType', editMediaType);
@@ -127,28 +129,109 @@ export default function AdminPage() {
 
       const data = await res.json();
 
-      if (data.success) {
-        if (data.data?.arError) {
-          setUploadProgress(`Imagen subida, pero error en AR: ${data.data.arError}`);
-        } else {
-          setUploadProgress(editMediaType === 'image' 
-            ? '¡Imagen y target AR actualizados correctamente!' 
-            : '¡Video actualizado!');
-        }
-        // Refresh data after a short delay
-        setTimeout(() => {
-          closeEditModal();
-          refreshData();
-        }, 1500);
-      } else {
+      if (!data.success) {
         setUploadProgress(`Error: ${data.error}`);
+        return;
       }
+
+      // For video uploads, we're done
+      if (editMediaType !== 'image') {
+        setUploadProgress('¡Video actualizado!');
+        setTimeout(() => { closeEditModal(); refreshData(); }, 1500);
+        return;
+      }
+
+      // Step 2: Compile MindAR target client-side
+      setUploadProgress('Paso 2/3: Compilando target AR en el navegador... (puede tardar ~20s)');
+
+      const mindBlob = await compileMindARInBrowser(editFile);
+
+      // Step 3: Upload .mind file to admin endpoint
+      setUploadProgress('Paso 3/3: Subiendo target AR...');
+
+      const mindFormData = new FormData();
+      mindFormData.append('password', savedPassword || '');
+      mindFormData.append('mindFile', mindBlob, 'target.mind');
+      mindFormData.append('userId', data.data.userId);
+
+      const mindRes = await fetch(`/api/admin/postcards/${editPostcard.id}/mind-target`, {
+        method: 'POST',
+        body: mindFormData,
+      });
+
+      const mindData = await mindRes.json();
+
+      if (mindData.success) {
+        setUploadProgress('¡Imagen y target AR actualizados correctamente!');
+      } else {
+        setUploadProgress(`Imagen subida, pero error en AR: ${mindData.error}`);
+      }
+
+      setTimeout(() => { closeEditModal(); refreshData(); }, 1500);
     } catch (err) {
       console.error('Upload error:', err);
-      setUploadProgress('Error al subir el archivo');
+      setUploadProgress(`Error: ${err instanceof Error ? err.message : 'Error al subir el archivo'}`);
     } finally {
       setUploading(false);
     }
+  };
+
+  /** Compile a MindAR .mind target file in the browser */
+  const compileMindARInBrowser = async (imageFile: File): Promise<Blob> => {
+    // Load MindAR compiler via CDN
+    const Compiler = await new Promise<any>((resolve, reject) => {
+      const moduleScript = document.createElement('script');
+      moduleScript.type = 'module';
+      moduleScript.textContent = `
+        import { Compiler } from 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js';
+        window.__MindARCompiler = Compiler;
+        window.dispatchEvent(new CustomEvent('mindar-compiler-ready'));
+      `;
+      const timeout = setTimeout(() => {
+        moduleScript.remove();
+        reject(new Error('Timeout cargando compilador MindAR'));
+      }, 30000);
+
+      const handleReady = () => {
+        clearTimeout(timeout);
+        window.removeEventListener('mindar-compiler-ready', handleReady);
+        const C = (window as any).__MindARCompiler;
+        if (C) resolve(C);
+        else reject(new Error('Compilador MindAR no encontrado'));
+      };
+      window.addEventListener('mindar-compiler-ready', handleReady);
+      document.head.appendChild(moduleScript);
+    });
+
+    // Load image into canvas
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => { URL.revokeObjectURL(i.src); resolve(i); };
+      i.onerror = () => { URL.revokeObjectURL(i.src); reject(new Error('Error cargando imagen')); };
+      i.src = URL.createObjectURL(imageFile);
+    });
+
+    const canvas = document.createElement('canvas');
+    let { width, height } = img;
+    const maxSize = 1024;
+    if (width > maxSize || height > maxSize) {
+      if (width > height) { height = Math.round((height * maxSize) / width); width = maxSize; }
+      else { width = Math.round((width * maxSize) / height); height = maxSize; }
+    }
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('No canvas context');
+    ctx.drawImage(img, 0, 0, width, height);
+
+    // Compile
+    const compiler = new Compiler();
+    await compiler.compileImageTargets([canvas], (progress: number) => {
+      setUploadProgress(`Paso 2/3: Compilando AR... ${Math.round(progress * 100)}%`);
+    });
+
+    const exportedData = await compiler.exportData();
+    return new Blob([exportedData], { type: 'application/octet-stream' });
   };
 
   const openPreview = (postcard: Postcard, type: 'image' | 'video') => {
