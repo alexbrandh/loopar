@@ -43,3 +43,13 @@ supabase/.temp/
 logs
 *.log
 .vercel
+
+# Playwright MCP artifacts
+.playwright-mcp/
+*-mobile.jpeg
+*-desktop.jpeg
+home-*.jpeg
+ar-test.jpeg
+privacy-mobile.jpeg
+signin-mobile.jpeg
+new-postcard-desktop.jpeg

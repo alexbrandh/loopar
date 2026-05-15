@@ -461,6 +461,13 @@
           return;
         }
         
+        // Track AR view (fire and forget)
+        fetch('/api/ar/track-view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postcard_id: postcardId })
+        }).catch(() => {});
+
         const videoUrl = postcard.video_url;
         const imageUrl = postcard.image_url;
         const targetUrl = `/api/ar/mind-target/${postcard.user_id}/${postcard.id}`;

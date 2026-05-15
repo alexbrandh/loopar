@@ -108,7 +108,7 @@ export function usePostcards() {
       // Use retry mechanism with network awareness
       const result = await retryWithConnection(async () => {
         const managedController = abortManagerRef.current.create(requestId, {
-          timeout: 10000, // Reduced from 15s to 10s for faster feedback
+          timeout: 30000, // 30s — batch signed URLs are fast but allow headroom
           debugLabel: `fetchPostcards`,
           onTimeout: () => logger.warn('⏰ [FETCH] Request timeout', {
             operation: 'fetch_timeout',

@@ -9,6 +9,30 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      ar_views: {
+        Row: {
+          id: string
+          postcard_id: string
+          viewed_at: string
+          user_agent: string | null
+          ip_address: string | null
+        }
+        Insert: {
+          id?: string
+          postcard_id: string
+          viewed_at?: string
+          user_agent?: string | null
+          ip_address?: string | null
+        }
+        Update: {
+          id?: string
+          postcard_id?: string
+          viewed_at?: string
+          user_agent?: string | null
+          ip_address?: string | null
+        }
+        Relationships: []
+      }
       postcards: {
         Row: {
           id: string
@@ -52,6 +76,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
     }
     Views: {

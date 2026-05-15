@@ -86,7 +86,7 @@ export default function NewPostcard() {
   // Referencias para cancelación
   const currentPostcardIdRef = useRef<string | null>(null);
   const currentUploadIdsRef = useRef<{ image?: string; video?: string }>({});
-  const videoUploadPromiseRef = useRef<Promise<void> | null>(null);
+  const videoUploadPromiseRef = useRef<Promise<unknown> | null>(null);
 
   // MindAR Browser compilation hook - compiles in browser with progress feedback
   const { status: compilationStatus } = useMindARBrowserCompiler({

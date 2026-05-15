@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-
-const ADMIN_PASSWORD = '6239';
+import { checkAdminPassword } from '@/lib/admin-auth';
 
 /**
  * POST /api/admin/postcards/[id]/mind-target
@@ -21,7 +20,7 @@ export async function POST(
     const mindFile = formData.get('mindFile') as File | null;
     const userId = formData.get('userId') as string;
 
-    if (password !== ADMIN_PASSWORD) {
+    if (!checkAdminPassword(password)) {
       return NextResponse.json(
         { success: false, error: 'Contraseña incorrecta' },
         { status: 401 }

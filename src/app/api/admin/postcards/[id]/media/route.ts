@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
-
-const ADMIN_PASSWORD = '6239';
+import { checkAdminPassword } from '@/lib/admin-auth';
 
 interface PostcardRow {
   id: string;
@@ -32,7 +31,7 @@ export async function POST(
     const file = formData.get('file') as File | null;
 
     // Authenticate
-    if (password !== ADMIN_PASSWORD) {
+    if (!checkAdminPassword(password)) {
       return NextResponse.json(
         { success: false, error: 'Contraseña incorrecta' },
         { status: 401 }

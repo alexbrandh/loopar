@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Github, Twitter, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import Image from 'next/image';
 
 export function Footer() {
@@ -77,32 +77,16 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Connect */}
+          {/* Contact */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-foreground">Conectar</h3>
-            <div className="flex gap-3">
-              <Link 
-                href="https://github.com" 
-                className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
-                aria-label="GitHub"
-              >
-                <Github className="h-4 w-4" />
-              </Link>
-              <Link 
-                href="https://twitter.com" 
-                className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
-                aria-label="Twitter"
-              >
-                <Twitter className="h-4 w-4" />
-              </Link>
-              <Link 
-                href="mailto:hola@regaliz.app" 
-                className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
-                aria-label="Email"
-              >
-                <Mail className="h-4 w-4" />
-              </Link>
-            </div>
+            <h3 className="font-semibold text-foreground">Contacto</h3>
+            <a
+              href="mailto:hola@regaliz.com.co"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Mail className="h-4 w-4" />
+              hola@regaliz.com.co
+            </a>
           </div>
         </div>
 

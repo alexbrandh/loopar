@@ -45,12 +45,10 @@ export default function Home() {
           
           <div className="container mx-auto px-4">
             {/* Section Header */}
-            <motion.div 
+            <motion.div
               className="text-center mb-20"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
+              initial={false}
+              animate={{ opacity: 1, y: 0 }}
             >
               <span className="inline-block px-4 py-1.5 mb-6 text-sm font-semibold text-primary bg-primary/10 rounded-full">
                 Simple y Poderoso
@@ -68,10 +66,8 @@ export default function Home() {
               {steps.map((step, index) => (
                 <motion.div
                   key={step.number}
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.15 }}
-                  viewport={{ once: true }}
+                  initial={false}
+                  animate={{ opacity: 1, y: 0 }}
                   className="group relative"
                 >
                   {/* Card */}

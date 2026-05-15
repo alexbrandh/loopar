@@ -1,68 +1,46 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Ignorar errores de TypeScript durante build
+  // Type checking enforced at build time. Fix errors instead of disabling this.
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
-  // Optimizaciones de rendimiento
   compress: true,
   poweredByHeader: false,
   generateEtags: true,
-  
-  // Configuración experimental para mejorar el rendimiento
+
   experimental: {
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons', 'react-icons'],
   },
-  
-  // Turbopack config (Next.js 16+)
+
   turbopack: {},
+
   headers: async () => {
     return [
       {
-        // Headers globales para prevenir errores ORB
-        source: '/(.*)',
+        // AR viewer needs cross-origin resources (MindAR CDN, A-Frame)
+        source: '/ar/(.*)',
         headers: [
-          {
-            key: 'Cross-Origin-Embedder-Policy',
-            value: 'unsafe-none', // Permite recursos cross-origin
-          },
-          {
-            key: 'Cross-Origin-Opener-Policy',
-            value: 'same-origin-allow-popups',
-          },
-          {
-            key: 'Cross-Origin-Resource-Policy',
-            value: 'cross-origin',
-          },
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
-          },
+          { key: 'Cross-Origin-Embedder-Policy', value: 'unsafe-none' },
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
         ],
       },
       {
         source: '/api/(.*)',
         headers: [
-          {
-            key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
-          },
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization',
-          },
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+        ],
+      },
+      {
+        // Long cache for static assets served from /_next/static
+        source: '/_next/static/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
     ];
   },
+
   images: {
     remotePatterns: [
       {
@@ -75,26 +53,13 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'qllfquoqrxvfgdudnrrr.supabase.co',
         port: '',
-        pathname: '/storage/v1/object/public/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'qllfquoqrxvfgdudnrrr.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/sign/**',
-      },
-      // ✅ Agregando soporte para URLs firmadas con parámetros
-      {
-        protocol: 'https',
-        hostname: 'qllfquoqrxvfgdudnrrr.supabase.co',
-        port: '',
         pathname: '/storage/**',
       },
       {
         protocol: 'https',
-        hostname: 'trae-api-us.mchost.guru',
+        hostname: 'images.unsplash.com',
         port: '',
-        pathname: '/api/ide/v1/**',
+        pathname: '/**',
       },
     ],
   },

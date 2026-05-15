@@ -8,7 +8,7 @@ interface CompilationOptions {
   postcardId: string | null;
   imageUploaded: boolean;
   imageFile: File | null;
-  videoUploadPromiseRef?: React.RefObject<Promise<void> | null>;
+  videoUploadPromiseRef?: React.RefObject<Promise<unknown> | null>;
   onGenerationStart?: () => void;
   onGenerationComplete?: () => void;
   onGenerationError?: (error: string) => void;

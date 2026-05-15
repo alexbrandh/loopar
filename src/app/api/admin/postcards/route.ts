@@ -3,7 +3,7 @@ import { createServerClient } from '@/lib/supabase';
 import { clerkClient } from '@clerk/nextjs/server';
 import type { Postcard } from '@/types/database';
 
-const ADMIN_PASSWORD = '6239';
+import { checkAdminPassword } from '@/lib/admin-auth';
 
 // Helper function to generate signed URL for storage files
 async function getSignedUrl(bucket: string, path: string): Promise<string | null> {
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { password } = body;
 
-    if (password !== ADMIN_PASSWORD) {
+    if (!checkAdminPassword(password)) {
       return NextResponse.json(
         { success: false, error: 'Contraseña incorrecta' },
         { status: 401 }
@@ -105,6 +105,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Fetch AR view counts per postcard
+    const { data: viewCounts, error: viewError } = await supabase
+      .from('ar_views')
+      .select('postcard_id');
+
+    const viewCountMap: Record<string, number> = {};
+    let totalArViews = 0;
+    if (!viewError && viewCounts) {
+      for (const row of viewCounts) {
+        viewCountMap[row.postcard_id] = (viewCountMap[row.postcard_id] || 0) + 1;
+        totalArViews++;
+      }
+    }
+
     // Enrich postcards with user info and signed URLs
     const enrichedPostcards = await Promise.all(
       postcards.map(async (postcard) => {
@@ -118,6 +132,7 @@ export async function POST(request: NextRequest) {
           ...postcard,
           image_url: signedImageUrl || postcard.image_url,
           video_url: signedVideoUrl || postcard.video_url,
+          ar_view_count: viewCountMap[postcard.id] || 0,
           user: usersMap[postcard.user_id] || {
             email: 'Desconocido',
             firstName: null,
@@ -139,6 +154,7 @@ export async function POST(request: NextRequest) {
           error: enrichedPostcards.filter(p => p.processing_status === 'error').length,
           needsBetterImage: enrichedPostcards.filter(p => p.processing_status === 'needs_better_image').length,
           uniqueUsers: userIds.length,
+          totalArViews,
         },
       },
     });

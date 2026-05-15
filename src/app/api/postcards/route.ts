@@ -13,7 +13,7 @@ import {
   compose,
   type ApiResponse
 } from '@/lib/api-middleware';
-import { createSignedUploadUrlWithRetry, createSignedUrlWithRetry } from '@/lib/storage-utils';
+import { createSignedUploadUrlWithRetry } from '@/lib/storage-utils';
 import type { Postcard, Database } from '@/types/database';
 
 type PostcardRow = Database['public']['Tables']['postcards']['Row'];
@@ -398,13 +398,20 @@ async function handleGetPostcards(
   request: NextRequest,
   userId: string
 ): Promise<NextResponse<ApiResponse<{ postcards: unknown[] }>> | NextResponse<ApiResponse<undefined>>> {
-  logger.debug('Starting postcards retrieval', { userId });
-  console.log('📥 [API-GET] Fetching postcards request received');
-  console.log('👤 [API-GET] Fetching postcards for user:', userId);
+  const t0 = Date.now();
+  console.log(` [API-GET] t+0ms — handler start, userId=${userId}`);
 
-  const supabase = createServerClient();
-
-  logger.database('select', 'postcards', { userId });
+  let supabase;
+  try {
+    supabase = createServerClient();
+  } catch (envErr) {
+    console.error(` [API-GET] Supabase config error:`, envErr);
+    return createApiResponse(false, undefined, {
+      message: 'Server configuration error',
+      code: 'CONFIG_ERROR',
+    });
+  }
+  console.log(` [API-GET] t+${Date.now() - t0}ms — supabase client created`);
 
   const { data: postcards, error } = await (supabase
     .from('postcards') as unknown as {
@@ -417,6 +424,8 @@ async function handleGetPostcards(
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
+
+  console.log(` [API-GET] t+${Date.now() - t0}ms — DB query done, count=${postcards?.length ?? 'null'}, error=${error?.message ?? 'none'}`);
 
   if (error) {
     logger.error('Failed to fetch postcards', {
@@ -454,100 +463,108 @@ async function handleGetPostcards(
     })) || []
   });
 
-  // Generate signed URLs for each postcard with retry logic
-  const postcardsWithSignedUrls = await Promise.all(
-    (postcards || []).map(async (postcard) => {
-      let imageUrl = '';
-      let videoUrl = '';
+  // Batch generate signed URLs (2 API calls total instead of 2×N)
+  const postcardList = postcards || [];
+  
+  // Extract and clean paths for each bucket
+  const imagePaths: (string | null)[] = postcardList.map((p) => {
+    if (!p.image_url) return null;
+    let path = p.image_url;
+    if (path.includes('/postcard-images/')) {
+      path = path.split('/postcard-images/')[1];
+    }
+    return path ? path.split('?')[0] : null;
+  });
 
-      if (postcard.image_url) {
-        // Extract path from existing URL or use direct path
-        let imagePath = postcard.image_url;
-        if (postcard.image_url.includes('/postcard-images/')) {
-          imagePath = postcard.image_url.split('/postcard-images/')[1];
-        } else if (postcard.image_url.includes('?')) {
-          // Handle case where it might be a signed URL but we want to re-sign or extract path
-          // But if it's a raw key like "user/id/image.jpg", it won't have ?
-          // If it's a full URL, we might need to be careful. 
-          // For now, assume if it doesn't have /postcard-images/, it IS the path (from our new fallback)
-        }
+  const videoPaths: (string | null)[] = postcardList.map((p) => {
+    if (!p.video_url) return null;
+    let path = p.video_url;
+    if (path.includes('/postcard-videos/')) {
+      path = path.split('/postcard-videos/')[1];
+    }
+    return path ? path.split('?')[0] : null;
+  });
 
-        if (imagePath) {
-          try {
-            // Remove any query parameters if present
-            imagePath = imagePath.split('?')[0];
+  // Batch sign: collect non-null paths
+  const validImagePaths = imagePaths.filter((p): p is string => p !== null);
+  const validVideoPaths = videoPaths.filter((p): p is string => p !== null);
 
-            const imageSignedUrl = await createSignedUrlWithRetry(
-              'postcard-images',
-              imagePath,
-              {
-                operation: 'GET /api/postcards',
-                timestamp: new Date().toISOString(),
-                userId
-              },
-              3600
-            );
-            imageUrl = imageSignedUrl || postcard.image_url;
-          } catch (error) {
-            // If file doesn't exist, keep original URL or empty string
-            logger.warn('Image file not found in storage', {
-              userId,
-              postcardId: postcard.id,
-              metadata: {
-                imagePath,
-                error: error instanceof Error ? error.message : String(error)
-              }
-            });
-            imageUrl = postcard.image_url || '';
+  let imageSignedMap: Record<string, string> = {};
+  let videoSignedMap: Record<string, string> = {};
+  
+  console.log(`⏱️ [API-GET] t+${Date.now() - t0}ms — starting batch signed URLs (images=${validImagePaths.length}, videos=${validVideoPaths.length})`);
+
+  // Single batch call for all image signed URLs
+  if (validImagePaths.length > 0) {
+    try {
+      const { data, error: signError } = await supabase.storage
+        .from('postcard-images')
+        .createSignedUrls(validImagePaths, 3600);
+
+      if (!signError && data) {
+        for (const item of data) {
+          if (item.signedUrl && item.path) {
+            imageSignedMap[item.path] = item.signedUrl;
           }
         }
+      } else {
+        logger.warn('Batch image signed URL generation failed', {
+          userId,
+          metadata: { error: signError?.message, pathCount: validImagePaths.length }
+        });
       }
+    } catch (err) {
+      logger.warn('Batch image signed URL exception', {
+        userId,
+        metadata: { error: err instanceof Error ? err.message : String(err) }
+      });
+    }
+  }
 
-      if (postcard.video_url) {
-        // Extract path from existing URL or use direct path
-        let videoPath = postcard.video_url;
-        if (postcard.video_url.includes('/postcard-videos/')) {
-          videoPath = postcard.video_url.split('/postcard-videos/')[1];
-        }
+  console.log(`⏱️ [API-GET] t+${Date.now() - t0}ms — image signed URLs done`);
 
-        if (videoPath) {
-          try {
-            // Remove any query parameters if present
-            videoPath = videoPath.split('?')[0];
+  // Single batch call for all video signed URLs
+  if (validVideoPaths.length > 0) {
+    try {
+      const { data, error: signError } = await supabase.storage
+        .from('postcard-videos')
+        .createSignedUrls(validVideoPaths, 3600);
 
-            const videoSignedUrl = await createSignedUrlWithRetry(
-              'postcard-videos',
-              videoPath,
-              {
-                operation: 'GET /api/postcards',
-                timestamp: new Date().toISOString(),
-                userId
-              },
-              3600
-            );
-            videoUrl = videoSignedUrl || postcard.video_url;
-          } catch (error) {
-            // If file doesn't exist, keep original URL or empty string
-            logger.warn('Video file not found in storage', {
-              userId,
-              postcardId: postcard.id,
-              metadata: {
-                videoPath,
-                error: error instanceof Error ? error.message : String(error)
-              }
-            });
-            videoUrl = postcard.video_url || '';
+      if (!signError && data) {
+        for (const item of data) {
+          if (item.signedUrl && item.path) {
+            videoSignedMap[item.path] = item.signedUrl;
           }
         }
+      } else {
+        logger.warn('Batch video signed URL generation failed', {
+          userId,
+          metadata: { error: signError?.message, pathCount: validVideoPaths.length }
+        });
       }
+    } catch (err) {
+      logger.warn('Batch video signed URL exception', {
+        userId,
+        metadata: { error: err instanceof Error ? err.message : String(err) }
+      });
+    }
+  }
 
-      return {
-        ...postcard,
-        image_url: imageUrl || postcard.image_url,
-        video_url: videoUrl || postcard.video_url,
-      };
-    })
-  );
+  console.log(`⏱️ [API-GET] t+${Date.now() - t0}ms — video signed URLs done`);
+
+  // Map signed URLs back to postcards
+  const postcardsWithSignedUrls = postcardList.map((postcard, index) => {
+    const imgPath = imagePaths[index];
+    const vidPath = videoPaths[index];
+
+    return {
+      ...postcard,
+      image_url: (imgPath && imageSignedMap[imgPath]) || postcard.image_url || '',
+      video_url: (vidPath && videoSignedMap[vidPath]) || postcard.video_url || '',
+    };
+  });
+
+  console.log(`⏱️ [API-GET] t+${Date.now() - t0}ms — returning ${postcardsWithSignedUrls.length} postcards`);
 
   return createApiResponse(
     true,
@@ -556,8 +573,8 @@ async function handleGetPostcards(
 }
 
 export const GET = compose(
-  withMethodValidation(['GET']),
-  withErrorHandling
+  withErrorHandling,
+  withMethodValidation(['GET'])
 )(withAuth(async (request: NextRequest, userId: string) => {
   const timer = createTimer('GET /api/postcards');
   const startTime = Date.now();

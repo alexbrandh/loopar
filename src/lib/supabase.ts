@@ -18,17 +18,54 @@ function getServiceRoleKey() {
   return process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 }
 
+const SUPABASE_FETCH_TIMEOUT = 15_000; // 15 seconds
+
+function fetchWithTimeout(url: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SUPABASE_FETCH_TIMEOUT);
+
+  const mergedSignal = init?.signal
+    ? init.signal
+    : controller.signal;
+
+  return globalThis.fetch(url, { ...init, signal: mergedSignal })
+    .finally(() => clearTimeout(timeout));
+}
+
 // Client-side/browser factory
 export function createBrowserClient() {
-  return createClient<Database>(getSupabaseUrl(), getAnonKey())
+  const url = getSupabaseUrl();
+  const key = getAnonKey();
+
+  if (!url || !key) {
+    console.error('❌ [SUPABASE] Missing env vars:', { hasUrl: !!url, hasKey: !!key });
+    throw new Error('Missing Supabase configuration (URL or ANON_KEY)');
+  }
+
+  return createClient<Database>(url, key, {
+    global: {
+      fetch: fetchWithTimeout,
+    },
+  })
 }
 
 // Server-side factory (service role)
 export function createServerClient() {
-  return createClient<Database>(getSupabaseUrl(), getServiceRoleKey(), {
+  const url = getSupabaseUrl();
+  const key = getServiceRoleKey();
+
+  if (!url || !key) {
+    console.error('❌ [SUPABASE] Missing env vars:', { hasUrl: !!url, hasKey: !!key });
+    throw new Error('Missing Supabase configuration (URL or SERVICE_ROLE_KEY)');
+  }
+
+  return createClient<Database>(url, key, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
+    },
+    global: {
+      fetch: fetchWithTimeout,
     },
   })
 }

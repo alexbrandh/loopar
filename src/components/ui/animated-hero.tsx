@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, Sparkles, Play } from "lucide-react";
+import { Camera, Sparkles, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SignInButton, SignedIn, SignedOut } from "@clerk/nextjs";
 import Link from "next/link";
@@ -39,7 +39,7 @@ function AnimatedHero() {
   }, [titleNumber, titles]);
 
   return (
-    <div className="w-full relative overflow-hidden min-h-[85vh]">
+    <div className="w-full relative overflow-hidden min-h-[85vh] pt-20 md:pt-24">
       {/* Arc Gallery de fotos animadas */}
       <ArcGallery images={memoryImages} />
       
@@ -59,8 +59,8 @@ function AnimatedHero() {
 
           {/* Main Title */}
           <div className="flex gap-4 flex-col">
-            <motion.h1 
-              className="text-5xl md:text-7xl max-w-4xl tracking-tighter text-center font-bold"
+            <motion.h1
+              className="text-[clamp(2.25rem,9vw,4.75rem)] md:text-7xl max-w-4xl tracking-tighter text-center font-bold leading-[1.05]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
@@ -127,9 +127,11 @@ function AnimatedHero() {
                 </Button>
               </Link>
             </SignedIn>
-            <Button size="lg" className="gap-2 text-lg px-8" variant="outline">
-              <Play className="w-5 h-5" />
-              Ver Demo
+            <Button asChild size="lg" className="gap-2 text-lg px-8" variant="outline">
+              <a href="#features">
+                <ArrowDown className="w-5 h-5" />
+                Cómo funciona
+              </a>
             </Button>
           </motion.div>
 

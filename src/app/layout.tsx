@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { Outfit, Alegreya_SC, Chivo_Mono } from "next/font/google"
+import { Outfit } from "next/font/google"
 import {
   ClerkProvider
 } from '@clerk/nextjs'
@@ -7,58 +7,76 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
-const outfit = Outfit({ 
+const outfit = Outfit({
   subsets: ["latin"],
   variable: "--font-sans",
-  display: "swap"
+  display: "swap",
 })
 
-const alegreyaSC = Alegreya_SC({ 
-  weight: ["400", "500", "700"],
-  subsets: ["latin"],
-  variable: "--font-serif",
-  display: "swap"
-})
-
-const chivoMono = Chivo_Mono({ 
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap"
-})
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://regaliz.com.co';
 
 export const metadata: Metadata = {
-  title: "Regaliz - Dulce Felicidad en AR",
-  description: "Crea experiencias AR mágicas que cobran vida. Transforma tus recuerdos en momentos memorables con realidad aumentada.",
-  manifest: "/manifest.json",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: 'Regaliz - Postales en Realidad Aumentada',
+    template: '%s | Regaliz',
+  },
+  description: 'Crea postales en realidad aumentada combinando una foto y un video. Comparte recuerdos que cobran vida cuando se ven a través de la cámara.',
+  applicationName: 'Regaliz',
+  keywords: ['postales AR', 'realidad aumentada', 'AR', 'fotos animadas', 'recuerdos', 'regalos', 'MindAR', 'postales digitales'],
+  authors: [{ name: 'Regaliz' }],
+  manifest: '/manifest.json',
+  alternates: {
+    canonical: '/',
+  },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
-    title: "Regaliz"
+    statusBarStyle: 'default',
+    title: 'Regaliz',
   },
   formatDetection: {
-    telephone: false
+    telephone: false,
   },
   openGraph: {
-    type: "website",
-    siteName: "Regaliz",
-    title: "Regaliz - Dulce Felicidad en AR",
-    description: "Crea experiencias AR mágicas que cobran vida. Transforma tus recuerdos en momentos memorables."
+    type: 'website',
+    siteName: 'Regaliz',
+    title: 'Regaliz - Postales en Realidad Aumentada',
+    description: 'Crea postales AR mágicas combinando una foto y un video. Comparte recuerdos que cobran vida.',
+    url: siteUrl,
+    locale: 'es_ES',
+    images: [
+      {
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'Regaliz - Postales en Realidad Aumentada',
+      },
+    ],
   },
   twitter: {
-    card: "summary",
-    title: "Regaliz - Dulce Felicidad en AR",
-    description: "Crea experiencias AR mágicas que cobran vida. Transforma tus recuerdos en momentos memorables con realidad aumentada."
-  }
-}
+    card: 'summary_large_image',
+    title: 'Regaliz - Postales en Realidad Aumentada',
+    description: 'Crea postales AR mágicas combinando una foto y un video. Comparte recuerdos que cobran vida.',
+    images: ['/opengraph-image'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+};
 
 export function generateViewport() {
   return {
     width: 'device-width',
     initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    themeColor: '#F47B6B'
-  }
+    themeColor: '#F47B6B',
+  };
 }
 
 export default function RootLayout({
@@ -92,16 +110,56 @@ export default function RootLayout({
         },
       }}
       localization={{
+        locale: 'es-ES',
+        socialButtonsBlockButton: 'Continuar con {{provider|titleize}}',
+        dividerText: 'o',
+        formFieldLabel__emailAddress: 'Correo electrónico',
+        formFieldLabel__password: 'Contraseña',
+        formFieldLabel__firstName: 'Nombre',
+        formFieldLabel__lastName: 'Apellido',
+        formFieldLabel__username: 'Usuario',
+        formFieldLabel__confirmPassword: 'Confirmar contraseña',
+        formFieldLabel__currentPassword: 'Contraseña actual',
+        formFieldLabel__newPassword: 'Nueva contraseña',
+        formFieldInputPlaceholder__emailAddress: 'tu@correo.com',
+        formFieldInputPlaceholder__password: 'Tu contraseña',
+        formFieldAction__forgotPassword: '¿Olvidaste tu contraseña?',
+        formButtonPrimary: 'Continuar',
+        backButton: 'Atrás',
         signIn: {
           start: {
             title: 'Iniciar sesión en Regaliz',
             subtitle: '¡Bienvenido! Por favor inicia sesión para continuar',
+            actionText: '¿No tienes cuenta?',
+            actionLink: 'Regístrate',
+          },
+          password: {
+            title: 'Introduce tu contraseña',
+            subtitle: 'Para continuar en Regaliz',
+            actionLink: 'Usar otro método',
+          },
+          forgotPassword: {
+            title: 'Restablecer contraseña',
+            subtitle_email: 'Te enviaremos un enlace por correo',
           },
         },
         signUp: {
           start: {
             title: 'Crear cuenta en Regaliz',
             subtitle: 'Crea tu cuenta para empezar',
+            actionText: '¿Ya tienes cuenta?',
+            actionLink: 'Inicia sesión',
+          },
+        },
+        userButton: {
+          action__signOut: 'Cerrar sesión',
+          action__manageAccount: 'Gestionar cuenta',
+          action__addAccount: 'Añadir cuenta',
+        },
+        userProfile: {
+          start: {
+            headerTitle__account: 'Cuenta',
+            headerTitle__security: 'Seguridad',
           },
         },
       }}
@@ -117,7 +175,7 @@ export default function RootLayout({
           <meta name="msapplication-TileColor" content="#F47B6B" />
           <meta name="msapplication-tap-highlight" content="no" />
         </head>
-        <body className={`${outfit.variable} ${alegreyaSC.variable} ${chivoMono.variable} font-sans antialiased`}>
+        <body className={`${outfit.variable} font-sans antialiased`}>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"

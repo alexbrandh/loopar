@@ -45,6 +45,7 @@ interface Postcard {
   is_public: boolean;
   created_at: string;
   updated_at: string;
+  ar_view_count: number;
   user: User;
   arLink: string;
 }
@@ -56,6 +57,7 @@ interface Stats {
   error: number;
   needsBetterImage: number;
   uniqueUsers: number;
+  totalArViews: number;
 }
 
 type FilterStatus = 'all' | 'ready' | 'processing' | 'error' | 'needs_better_image';
@@ -517,7 +519,7 @@ export default function AdminPage() {
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
             <div className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
@@ -589,6 +591,18 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
+
+            <div className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-teal-500/10 rounded-lg flex items-center justify-center">
+                  <IoEyeOutline className="text-xl text-teal-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{stats.totalArViews}</p>
+                  <p className="text-xs text-gray-400">Vistas AR</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -631,6 +645,7 @@ export default function AdminPage() {
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Cliente</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Postal</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Estado</th>
+                  <th className="text-center px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Vistas AR</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Fecha</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Acciones</th>
                 </tr>
@@ -638,7 +653,7 @@ export default function AdminPage() {
               <tbody className="divide-y divide-gray-700/50">
                 {filteredPostcards.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
                       {searchTerm || filterStatus !== 'all' 
                         ? 'No se encontraron postales con los filtros aplicados'
                         : 'No hay postales registradas'}
@@ -683,6 +698,12 @@ export default function AdminPage() {
                             {postcard.error_message}
                           </p>
                         )}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                          <IoEyeOutline />
+                          {postcard.ar_view_count}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1 text-gray-400 text-sm">
